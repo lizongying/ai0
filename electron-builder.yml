@@ -1,0 +1,12 @@
+appId: com.lizongying.ai0
+productName: ai0
+directories:
+  output: releases
+win:
+  target: nsis
+linux:
+  target: deb
+  maintainer: Li ZongYing <lizongying@msn.com>
+mac:
+  target: dmg
+  category: public.app-category.productivity

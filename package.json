@@ -1,0 +1,33 @@
+{
+  "name": "ai0",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "start": "vue-tsc -b && vite build && electron .",
+    "app:dir": "electron-builder --dir",
+    "app:arm64": "npx electron-builder --mac --linux --arm64",
+    "app:x64": "npx electron-builder -mwl --x64"
+  },
+  "homepage": "https://lizongying.github.io/ai0/",
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@types/electron": "^1.6.12",
+    "@types/node": "^22.15.2",
+    "@vitejs/plugin-vue": "^5.2.2",
+    "@vue/tsconfig": "^0.7.0",
+    "electron": "35.2.1",
+    "electron-builder": "^26.0.12",
+    "typescript": "~5.7.2",
+    "vite": "^6.3.1",
+    "vite-plugin-electron": "^0.29.0",
+    "vue-tsc": "^2.2.8"
+  }
+}
