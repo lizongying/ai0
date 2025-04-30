@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圆角矩形示例</title>
+    <style>
+        .rounded-rectangle {
+            padding: 10px;
+            background-color: #4CAF50; /* 设置背景颜色 */
+            border-radius: 15px; /* 设置圆角半径 */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+
+
+        .speech-bubble {
+            max-width: calc(100% - 140px);
+            position: relative;
+            display: inline-block;
+            padding: 20px 10px;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            color: white;
+            font-size: 14px;
+            margin: 0 15px;
+            word-break: break-all;
+        }
+
+        /* 右侧三角形 */
+        .right.speech-bubble::after {
+            content: '';
+            position: absolute;
+            top: 30px;
+            right: -20px;
+            transform: translateY(-50%);
+            border-width: 10px;
+            border-style: solid;
+            border-color: transparent transparent transparent #4CAF50;
+        }
+
+        /* 左侧三角形 */
+        .left.speech-bubble::before {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: -20px;
+            transform: translateY(-50%);
+            border-width: 10px;
+            border-style: solid;
+            border-color: transparent #4CAF50 transparent transparent;
+        }
+    </style>
+</head>
+<body>
+
+<div style="
+    display: flex;
+    justify-content: flex-end;
+        margin-bottom: 10px;
+">
+    <div class="speech-bubble right">这是一个对话框</div>
+    <div style="width: 50px; height: 50px; background-color: #213547"></div>
+</div>
+
+<div style="
+    display: flex;
+    justify-content: flex-start;
+        margin-bottom: 10px;
+">
+    <div style="width: 50px; height: 50px; background-color: #213547"></div>
+    <div class="speech-bubble left"><div>这是一个对话框<p>3234234234234324234</p><p>3234234234234324234</p><p>3234234234234324234</p><p>3234234234234324234</p><p>3234234234234324234</p></div></div>
+</div>
+
+</body>
+</html>

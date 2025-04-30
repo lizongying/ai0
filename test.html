@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .ant-popover .ant-popover-title {
+            min-width: 177px;
+            margin-bottom: 8px;
+            color: rgba(255, 255, 255, 0.85);
+            font-weight: 600;
+        }
+
+        .ant-popover .ant-popover-inner-content {
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .ant-popover {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .ant-popover {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 14px;
+            line-height: 1.5714285714285714;
+            list-style: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1030;
+            font-weight: normal;
+            white-space: normal;
+            text-align: start;
+            cursor: auto;
+            user-select: text;
+            --antd-arrow-background-color: #1f1f1f;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        p {
+            margin-top: 0;
+            margin-bottom: 1em;
+        }
+
+        p {
+            display: block;
+            margin-block-start: 1em;
+            margin-block-end: 1em;
+            margin-inline-start: 0px;
+            margin-inline-end: 0px;
+            unicode-bidi: isolate;
+        }
+
+        .ant-popover-placement-left .ant-popover-arrow {
+            top: 50%;
+            transform: translateY(-50%) translateX(100%) rotate(90deg);
+        }
+
+        .ant-popover .ant-popover-arrow {
+            right: 0;
+            position: absolute;
+            z-index: 1;
+            display: block;
+            pointer-events: none;
+            width: 16px;
+            height: 16px;
+            overflow: hidden;
+        }
+
+        .ant-popover .ant-popover-arrow:before {
+            background: var(--antd-arrow-background-color);
+        }
+
+        .ant-popover .ant-popover-arrow::before {
+            position: absolute;
+            bottom: 0;
+            inset-inline-start: 0;
+            width: 16px;
+            height: 8px;
+            background: var(--antd-arrow-background-color);
+            clip-path: polygon(1.6568542494923806px 100%, 50% 1.6568542494923806px, 14.34314575050762px 100%, 1.6568542494923806px 100%);
+            clip-path: path('M 0 8 A 4 4 0 0 0 2.82842712474619 6.82842712474619 L 6.585786437626905 3.0710678118654755 A 2 2 0 0 1 9.414213562373096 3.0710678118654755 L 13.17157287525381 6.82842712474619 A 4 4 0 0 0 16 8 Z');
+            content: "";
+        }
+
+        .ant-popover .ant-popover-arrow::after {
+            content: "";
+            position: absolute;
+            width: 8.970562748477143px;
+            height: 8.970562748477143px;
+            bottom: 0;
+            inset-inline: 0;
+            margin: auto;
+            border-radius: 0 0 2px 0;
+            transform: translateY(50%) rotate(-135deg);
+            box-shadow: 3px 3px 7px rgba(0, 0, 0, 0.1);
+            z-index: 0;
+            background: transparent;
+        }
+
+        .ant-popover::before {
+            content: '111';
+            display: block;
+            width: 20px;
+            height: 100px;
+            background-color: #535bf2;
+            transform: translateX(-20px);
+            border-radius: 5%;
+        }
+    </style>
+</head>
+<body>
+<div class="ant-popover css-dev-only-do-not-override-159b9t7 ant-popover-placement-left"
+     style="left: 50px; top: 50px; transform-origin: 240.891px 50%;
+      background-color: #1f1f1f;
+      border-radius: 5%;
+      padding: .5em;
+      width: 300px;
+">
+    <div class="ant-popover-content" style="background-color: #535bf2">
+        <div class="ant-popover-arrow" style="background-color: red"><span class="ant-popover-arrow-content"></span></div>
+        <div class="ant-popover-inner" role="tooltip">
+            <div class="ant-popover-inner-content" style="background-color: #213547">
+                <p data-v-ced5b2ce="">Content</p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -4,9 +4,7 @@ defineProps<{ msg: string }>()
 </script>
 
 <template>
-  <h1>{{ msg }}</h1>
-
-  <p class="read-the-docs">ai tools</p>
+  <p class="read-the-docs">14:40:08</p>
 </template>
 
 <style scoped>
