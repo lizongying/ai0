@@ -32,6 +32,14 @@ export default defineConfig({
                 },
             },
             {
+                entry: 'src/main/renderer_deepseek.ts', vite: {
+                    build: {
+                        outDir: 'dist/main',
+                        sourcemap: true,
+                    },
+                },
+            },
+            {
                 entry: 'src/preload/index.ts', vite: {
                     build: {
                         outDir: 'dist/preload',
@@ -40,7 +48,7 @@ export default defineConfig({
                 },
             },
             {
-                entry: 'src/preload/main.ts', vite: {
+                entry: 'src/preload/me.ts', vite: {
                     build: {
                         outDir: 'dist/preload',
                         sourcemap: true,

@@ -17,6 +17,7 @@
   "homepage": "https://lizongying.github.io/ai0/",
   "dependencies": {
     "ant-design-vue": "^4.2.6",
+    "idb": "^8.0.2",
     "marked": "^15.0.11",
     "marked-plaintify": "^1.1.1",
     "mitt": "^3.0.1",

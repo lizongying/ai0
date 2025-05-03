@@ -1,23 +1,17 @@
 <script setup lang="ts">
 import {reactive, watch} from 'vue'
 import {marked} from 'marked'
-import {UserOutlined} from "@ant-design/icons-vue";
+import {UserOutlined} from '@ant-design/icons-vue'
 import {getImageUrl} from '../utils.ts'
 
-interface Message {
-  username: string
-  avatar: string
-  me: boolean
-  content: string
-  html?: string
-}
+// import translations from '../../i18n'
+//
+// let t = translations.hant
 
 const props = defineProps<{ messages: Message[], settings: Settings }>()
-const messages = reactive<Message[]>([])
 
 const parseMarkdown = async (md: string): Promise<string> => {
   try {
-    console.log('md', md)
     return (await marked.parse(md)) || ''
   } catch (error) {
     console.error('Markdown parsing error:', error)
@@ -25,17 +19,44 @@ const parseMarkdown = async (md: string): Promise<string> => {
   }
 }
 
+// const messages = computed(() => {
+//     return props.messages.map(async (msg) => {
+//       return {
+//         ...msg,
+//         html: await parseMarkdown(msg.content)
+//       }
+//     })
+// })
+
+const messages = reactive<Message[]>([])
+
+
 watch(() => props.messages, async (newMessages) => {
-  console.log('newMessages', newMessages)
   if (!newMessages?.length) return
 
   try {
     const processed = await Promise.all(
-        newMessages.map(async (msg) => ({
-          ...msg,
-          html: await parseMarkdown(msg.content)
-        }))
+        newMessages.map(async (msg, index) => {
+          const m = messages[index]
+          // console.log(index, 'msg.content.length', msg.content.length, 'm.render', m?.render, 'msg.content', msg.content)
+          if (m && m.render >= msg.content.length && m.content === msg.content) {
+            // console.log(index, 'msg.content:', msg.content, 'noneed', 'html:', m?.html)
+            return m
+          }
+
+          if (msg.content) {
+            return {
+              ...msg,
+              render: msg.content.length,
+              html: await parseMarkdown(msg.content),
+            }
+          } else {
+            return msg
+          }
+        })
     )
+
+    console.log('processed', processed)
 
     messages.splice(0, messages.length, ...processed)
   } catch (error) {
@@ -51,32 +72,33 @@ const messageContainerClass = (me: boolean): string => {
 
 <template>
   <div class="messages-container">
-    <div :class="messageContainerClass(message.me)" v-for="(message, index) in messages" :key="index">
-      <div class="avatar" v-if="!message.me" :style="{ backgroundImage: `url(${message.avatar})` }"></div>
-      <a-tooltip v-if="!message.me">
-        <template #title>{{ message.username }}</template>
-        <a-avatar :src="getImageUrl(message.avatar)" shape="square" :size="64">
+    <div :class="messageContainerClass(message.user.me)" v-for="(message, index) in messages" :key="index">
+      <a-tooltip v-if="!message.user.me">
+        <template #title>{{ message.user.name }}</template>
+        <a-avatar :src="getImageUrl(message.user.avatar)" shape="square" :size="64">
           <template #icon>
             <UserOutlined/>
           </template>
         </a-avatar>
       </a-tooltip>
       <div class="message-content">
-        <div class="username">{{ message.username }} {{ new Date().toLocaleString() }}</div>
+        <div class="username">{{ props.settings.showNickname ? message.user.name : '' }} {{
+            new Date().toLocaleString()
+          }}
+        </div>
         <div
             class="speech-bubble"
             v-html="message.html"
         ></div>
       </div>
-      <a-tooltip v-if="message.me">
-        <template #title>{{ message.username }}</template>
-        <a-avatar :src="getImageUrl(message.avatar)" shape="square" :size="64">
+      <a-tooltip v-if="message.user.me">
+        <template #title>{{ message.user.name }}</template>
+        <a-avatar :src="getImageUrl(message.user.avatar)" shape="square" :size="64">
           <template #icon>
             <UserOutlined/>
           </template>
         </a-avatar>
       </a-tooltip>
-      <div class="avatar" v-if="message.me" :style="{ backgroundImage: `url(${message.avatar})` }"></div>
     </div>
   </div>
 </template>
@@ -91,26 +113,15 @@ const messageContainerClass = (me: boolean): string => {
 .message-container {
   display: flex;
   gap: 12px;
+  text-align: left;
 }
 
 .message-container.left {
   justify-content: flex-start;
-  text-align: left;
 }
 
 .message-container.right {
   justify-content: flex-end;
-  text-align: right;
-}
-
-.avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background-color: #213547;
-  background-size: cover;
-  background-position: center;
-  flex-shrink: 0;
 }
 
 .message-content {
@@ -125,8 +136,16 @@ const messageContainerClass = (me: boolean): string => {
   color: #666;
 }
 
+.left .username {
+  text-align: left;
+}
+
+.right .username {
+  text-align: right;
+}
+
 .speech-bubble {
-  max-width: calc(100% - 140px);
+  max-width: calc(100% - 12px);
   padding: 12px 16px;
   border-radius: 12px;
   color: white;

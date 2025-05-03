@@ -4,9 +4,12 @@ directories:
   output: releases
 win:
   target: nsis
+  icon: public/icon-256x256.ico
 linux:
   target: deb
   maintainer: Li ZongYing <lizongying@msn.com>
+  icon: public/icon-256x256.png
 mac:
   target: dmg
   category: public.app-category.productivity
+  icon: public/icon-256x256.icns

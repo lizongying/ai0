@@ -1,19 +1,34 @@
-const {ipcRenderer} = require('electron')
+const {ipcRenderer, contextBridge} = require('electron')
 import translations from '../i18n'
 import {Marked} from 'marked'
 import markedPlaintify from 'marked-plaintify'
 
-let t = translations['hant']
+let t = translations.hant
 
 const lineColor = 'currentColor'
 const fullColor = 'none'
 
-const sendToMain = (msg: String) => {
-    ipcRenderer.send('to-main', msg)
+const chat = (msg: String) => {
+    ipcRenderer.send('chat', {from: 'deepseek', to: 'me', data: msg})
 }
 
-ipcRenderer.on('from-main', (_: any, message: any) => {
-    console.log('Received from main:', message)
+ipcRenderer.on('chat', (_: any, message: any) => {
+    console.log('Received from chat:', message)
+    const input = document.querySelector('#chat-input') as HTMLTextAreaElement
+    input.focus()
+    input.value = ''
+    document.execCommand('insertText', false, message.content)
+    const buttons = document.querySelectorAll('div[role="button"]');
+    (buttons[buttons.length - 1] as HTMLElement).click()
+})
+
+contextBridge.exposeInMainWorld('electronAPI', {
+    sendMessage: (channel: any, data: any) => {
+        ipcRenderer.send(channel, data)
+    },
+    onMessage: (channel: any, callback: any) => {
+        ipcRenderer.on(channel, (_: any, ...args: any[]) => callback(...args))
+    },
 })
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -154,6 +169,7 @@ const addPopup = (ele: Element, name: string) => {
                 firstChild.click()
                 const md = await navigator.clipboard.readText()
                 console.log('md:', md)
+                chat(md)
                 try {
                     const txt = await new Marked({gfm: true})
                         .use(markedPlaintify())
@@ -170,6 +186,7 @@ const addPopup = (ele: Element, name: string) => {
                 firstChild.click()
                 const md = await navigator.clipboard.readText()
                 console.log('md:', md)
+                chat(md)
                 try {
                     downloadTextFile(md, md.split('\n')[0].slice(0, 10) + '.txt')
                 } catch (err) {
@@ -194,7 +211,6 @@ const addPopup = (ele: Element, name: string) => {
                 traverseChildren(clonedElement)
 
                 const outerHTML = clonedElement.outerHTML
-                sendToMain(outerHTML)
                 const type = 'text/html'
                 const clipboardItemData = {
                     [type]: new Blob([outerHTML], {type}),

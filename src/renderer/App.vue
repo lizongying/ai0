@@ -1,79 +1,59 @@
 <script setup lang="ts">
-import MarkDown from './components/MarkDown.vue'
 import {
-  ClockCircleOutlined,
   EllipsisOutlined,
   FileAddOutlined,
   FileImageOutlined,
+  LoadingOutlined,
   PlusOutlined,
   RightOutlined,
   SendOutlined,
-  UserOutlined
+  UserOutlined,
 } from '@ant-design/icons-vue'
-import {theme} from 'ant-design-vue'
+import {message, theme} from 'ant-design-vue'
 
-
-import {computed, type CSSProperties, h, nextTick, onMounted, reactive, ref} from 'vue'
+import {computed, type CSSProperties, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue'
 import Chat from './components/Chat.vue'
-import {getImageUrl} from './utils.ts'
-
+import {getImageUrl, getTimestamp, parseText} from './utils.ts'
 import translations from '../i18n'
+import {DatabaseManager} from './db.ts'
 
-let t = translations['hant']
 
-interface FormState {
-  username: string;
-  password: string;
-  remember: boolean;
+enum Lang {
+  Hant = '漢字',
+  Hans = '简体字',
+  En = 'English',
 }
 
-const formState = reactive<FormState>({
-  username: '',
-  password: '',
-  remember: true,
-});
-const onFinish = (values: any) => {
-  console.log('Success:', values);
-};
+const t = computed(() => {
+  switch (settings.lang) {
+    case Lang.En:
+      return translations.en
+    case Lang.Hant:
+      return translations.hant
+    case Lang.Hans:
+      return translations.hans
+    default:
+      return translations.en
+  }
+})
 
-const onFinishFailed = (errorInfo: any) => {
-  console.log('Failed:', errorInfo);
-};
-
-
-const open = ref<boolean>(false);
-
-const afterOpenChange = (bool: boolean) => {
-  console.log('open', bool);
-};
+const open = ref<boolean>(false)
 
 const showDrawer = () => {
   open.value = true
 }
 
-const msg = ref('')
-
 const ellipsis = ref(true)
 
-
-// const sendToChild = (msg: String) => {
-//   ipcRenderer.send('to-child', `Hello from Main Window! ${msg}`);
-// }
-
 const groupNotify = ref(`亲爱的群成员们：
-大家好！为营造高效、友好的交流环境，现就群内规则及近期事项提醒如下，请仔细阅读：
+大家好！为营造高效、友好的交流环境，现就群内规则提醒如下，请仔细阅读：
 1️⃣ 群功能定位
 本群旨在AI技术交流，请勿发布无关广告、谣言或敏感内容。
 2️⃣ 发言规范
 ▫️ 文明交流，禁止人身攻击或歧视性言论；
-▫️ 重要通知请勿刷屏，避免覆盖他人信息；
-▫️ 私聊需求请主动添加好友，避免群内频繁@全体成员。
-3️⃣ 近期重点安排
-⏰ 时间：【XX月XX日（周X）XX:XX】
-📍 事项：【例：项目进度汇报/主题分享会/线下活动报名】
-📝 要求：【例：提前准备资料/准时参会/完成问卷填写】
+▫️ 私聊需求请主动@好友，避免群内频繁@全体成员。
 4️⃣ 问题反馈
-如遇技术问题或规则疑问，请联系管理员【@管理员昵称】或私信沟通，我们将第一时间协助处理。
+如遇技术问题或疑问，请联系管理员 https://github.com/lizongying/ai0/
 感谢大家的配合与支持！让我们共同维护一个有价值的社群空间～
 —— 群管理团队`)
 
@@ -81,202 +61,441 @@ const lines = computed(() => groupNotify.value.split('\n'))
 const lineMax = 5
 
 const headerStyle: CSSProperties = {
-  textAlign: 'center',
-  color: '#fff',
   height: 64,
   paddingInline: 50,
   lineHeight: '64px',
   backgroundColor: '#333',
-};
+}
 
 const contentStyle: CSSProperties = {
   textAlign: 'center',
-  minHeight: 120,
   height: '100vh',
   lineHeight: '1.5em',
-  color: '#fff',
   backgroundColor: '#333',
-  padding: '24px 50px',
+  padding: '0 50px',
   overflow: 'scroll',
-};
-
-const siderStyle: CSSProperties = {
-  textAlign: 'center',
-  lineHeight: '64px',
-  color: '#fff',
-  backgroundColor: '#333',
-  overflow: 'scroll',
-};
-
-const footerStyle: CSSProperties = {
-  height: '200px',
-  textAlign: 'center',
-  color: '#fff',
-  backgroundColor: '#333',
-  position: 'relative',
-};
-
-onMounted(() => {
-  if (window.electronAPI) {
-    window.electronAPI.onMessage('app-status', (data: any) => {
-      console.log('收到主进程消息:', data)
-    })
-
-    window.electronAPI.onMessage('from-child', (data: any) => {
-      console.log('Received from child:', data)
-      msg.value = data
-    })
-  }
-})
-
-
-interface DataItem {
-  id: string
-  name: string
-  avatar: string
-  link: string
-  desc: string
 }
 
-const data: DataItem[] = [
-  {
+const siderStyle: CSSProperties = {
+  backgroundColor: '#333',
+  borderRight: '1px solid rgba(253, 253, 253, 0.12)',
+}
+
+const footerStyle: CSSProperties = {
+  paddingTop: 0,
+  height: '200px',
+  backgroundColor: '#333',
+  position: 'relative',
+}
+
+const collapsed = ref(false)
+
+const windowWidth = ref(window.innerWidth)
+
+const handleResize = () => {
+  windowWidth.value = window.innerWidth
+  collapsed.value = window.innerWidth < 800
+}
+
+const loadSettingsFromLocalStorage = (): Settings | null => {
+  const savedSettings = localStorage.getItem('settings')
+  if (savedSettings) {
+    return JSON.parse(savedSettings)
+  }
+  return null
+}
+
+const savedSettings = loadSettingsFromLocalStorage()
+
+const settingsDefault: Settings = {
+  groupName: 'AI技术交流群',
+  myName: '我',
+  saveMessage: true,
+  showNickname: true,
+  lang: Lang.Hant,
+  avatar: getImageUrl('me.png')
+}
+console.log('settingsDefault', settingsDefault)
+
+const settings: Settings = reactive({
+  groupName: savedSettings?.groupName || settingsDefault.groupName,
+  myName: savedSettings?.myName || settingsDefault.myName,
+  saveMessage: savedSettings?.saveMessage ?? settingsDefault.saveMessage,
+  showNickname: savedSettings?.showNickname ?? settingsDefault.showNickname,
+  lang: savedSettings?.lang || settingsDefault.lang,
+  avatar: savedSettings?.avatar || settingsDefault.avatar
+})
+
+watch(
+    () => settings,
+    (newSettings) => {
+      localStorage.setItem('settings', JSON.stringify(newSettings))
+    },
+    {deep: true}
+)
+
+const user: { [key: string]: User } = reactive({
+  deepseek: <User>{
     id: 'deepseek',
     name: 'DeepSeek',
     avatar: 'deepseek.png',
     link: 'https://chat.deepseek.com/',
     desc: 'Chat with DeepSeek AI – your intelligent assistant for coding, content creation, file reading, and more. Upload documents, engage in long-context conversations, and get expert help in AI, natural language processing, and beyond. | 深度求索（DeepSeek）助力编程代码开发、创意写作、文件处理等任务，支持文件上传及长文本对话，随时为您提供高效的AI支持。',
+    online: true,
+    me: false,
   },
-  {
+  doubao: <User>{
     id: 'doubao',
     name: '豆包',
     avatar: 'doubao.png',
     link: 'https://www.doubao.com/chat/',
     desc: '豆包是你的 AI 聊天智能对话问答助手，写作文案翻译编程全能工具。豆包为你答疑解惑，提供灵感，辅助创作，也可以和你畅聊任何你感兴趣的话题。',
+    online: false,
+    me: false,
   },
-  {
+  kimi: <User>{
     id: 'kimi',
     name: 'Kimi',
     avatar: 'kimi.png',
     link: 'https://kimi.moonshot.cn/chat/',
     desc: 'Kimi是一款学生和职场人的新质生产力工具。帮你解读论文，写代码查BUG，策划方案，创作小说，多语言翻译。有问题问Kimi，一键解决你的所有难题',
+    online: false,
+    me: false,
   },
-  {
+  zhida: <User>{
     id: 'zhida',
     name: '知乎直達',
     avatar: 'zhida.png',
     link: 'https://zhida.zhihu.com/',
     desc: '知乎直答（zhida.ai）是知乎推出的一款使用 AI 大模型等先进技术的产品，以知乎社区的优质内容为核心，多种数据源为辅助，为人们提供一种全新的获取可靠信息的途径。知乎直答是多智能体系统，能够满足用户多维度的需求；同时对生成结果进行溯源，以确保内容的可信、可控以及对知识产权和版权的尊重。知乎直答致力于为用户提供卓越的使用体验，用技术拉近创作者和用户之间的距离。有问题，就会有答案。',
+    online: false,
+    me: false,
   },
-  {
+  tongyi: <User>{
     id: 'tongyi',
     name: '通义',
     avatar: 'tongyi.png',
     link: 'https://www.tongyi.com/qianwen/',
     desc: '通义是一个通情、达义的国产AI模型，可以帮你解答问题、文档阅读、联网搜索并写作总结，最多支持1000万字的文档速读。通义_你的全能AI助手',
+    online: false,
+    me: false,
   },
-  {
+  hunyuan: <User>{
     id: 'hunyuan',
     name: '騰訊混元',
     avatar: 'hunyuan.png',
     link: 'https://llm.hunyuan.tencent.com/#/chat',
     desc: '腾讯混元大模型是由腾讯研发的大语言模型，具备跨领域知识和自然语言理解能力，实现基于人机自然语言对话的方式，理解用户指令并执行任务，帮助用户实现人获取信息，知识和灵感。',
+    online: false,
+    me: false,
   },
-  {
+  zhipu: <User>{
     id: 'zhipu',
     name: '智普',
     avatar: 'zhipu.png',
     link: 'https://chat.z.ai/',
-    desc: 'Z Chat is an advanced AI assistant developed by Z.ai. Built on open-source GLM models, it supports text generation, reasoning, and deep research - making it a powerful and free AI chatbot tailored for both English and Chinese users.'
+    desc: 'Z Chat is an advanced AI assistant developed by Z.ai. Built on open-source GLM models, it supports text generation, reasoning, and deep research - making it a powerful and free AI chatbot tailored for both English and Chinese users.',
+    online: false,
+    me: false,
   },
-  {
+  mita: <User>{
     id: 'mita',
     name: '秘塔AI搜索',
     avatar: 'mita.png',
     link: 'https://metaso.cn/',
     desc: '秘塔AI搜索，没有广告，直达结果',
+    online: false,
+    me: false,
   },
-  {
+  zhipuqingyan: <User>{
     id: 'zhipuqingyan',
     name: '智譜清言',
     avatar: 'zhipuqingyan.png',
     link: 'https://chatglm.cn/main/alltoolsdetail?lang=zh',
     desc: '中国版对话语言模型，与GLM大模型进行对话。',
+    online: false,
+    me: false,
   },
-  {
+  yiyan: <User>{
     id: 'yiyan',
     name: '文心一言',
     avatar: 'yiyan.png',
     link: 'https://yiyan.baidu.com/',
     desc: '文心一言既是你的智能伙伴，可以陪你聊天、回答问题、画图识图；也是你的AI助手，可以提供灵感、撰写文案、阅读文档、智能翻译，帮你高效完成工作和学习任务。',
+    online: false,
+    me: false,
   },
-];
-
-interface Message {
-  username: string
-  avatar: string
-  me: boolean
-  content: string
-}
-
-const settings: Settings = reactive({
-  groupName: 'AI技术交流群',
-  myName: '我',
+  me: <User>{
+    id: 'me',
+    name: computed(() => settings.myName),
+    avatar: computed(() => settings.avatar || ''),
+    link: 'https://github.com/lizongying/ai0/',
+    desc: '什麼都沒有說',
+    online: true,
+    me: true,
+  },
 })
 
-const messages = ref<Message[]>([
-  {
-    username: 'DeepSeek',
-    avatar: 'deepseek.png',
-    me: false,
-    content: 'Hello there! How are you doing today?\n\nI was wondering if you could help me with something...'
-  },
-  {
-    username: settings.myName,
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    me: true,
-    content: 'Hi Alice! I\'m doing well, thanks. **What can I help you with?**'
-  },
-  {
-    username: 'Alice',
-    avatar: 'https://i.pravatar.cc/150?img=1',
-    me: false,
-    content: 'I need help with:\n1. Vue components\n2. TypeScript\n3. Markdown rendering\n\n*Can you assist?*'
-  },
-  {
-    username: settings.myName,
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    me: true,
-    content: 'Absolutely! Here are some resources:\n\n- [Vue Documentation](https://vuejs.org)\n- [TypeScript Handbook](https://www.typescriptlang.org/docs)\n\n```javascript\n// Example code\nconst message = "Happy coding!"\n```'
-  }
+const users: User[] = reactive([
+  user.deepseek,
+  user.doubao,
+  user.kimi,
+  user.zhida,
+  user.tongyi,
+  user.hunyuan,
+  user.zhipu,
+  user.mita,
+  user.zhipuqingyan,
+  user.me,
 ])
 
-// Function to add a new message
-const addMessage = (content: string, me: boolean = true) => {
-  messages.value.push({
-    username: me ? settings.myName : 'Alice',
-    avatar: me ? 'https://i.pravatar.cc/150?img=5' : 'https://i.pravatar.cc/150?img=1',
-    me,
-    content
-  })
+interface Data {
+  from: string
+  to: string
+  data: string
+}
 
-  console.log('messages', messages.value)
+let dbManager: DatabaseManager | null = null
+
+const pageSize = 10
+let offset = 0
+
+onMounted(async () => {
+  dbManager = new DatabaseManager()
+  await dbManager.initialize()
+
+  if (window.electronAPI) {
+    window.electronAPI.onMessage('chat', async (data: Data) => {
+      console.log('Received data:', data)
+      await addMessage(data.data, user[data.from])
+    })
+  }
+
+  window.addEventListener('resize', handleResize)
+
+  let rs = await dbManager.findMessages(pageSize, offset)
+  console.log('rs', rs)
+  if (rs) {
+    for (const i of rs) {
+      const u = user[i.userId]
+      if (u) {
+        currentMessage = {
+          user: u,
+          content: i.content,
+          createTime: i.createTime,
+          finished: true,
+          render: 0,
+        }
+        messages.push(currentMessage)
+      }
+    }
+  }
+
+  let a = `event: ready
+data: {}
+
+event: update_session
+data: {"updated_at":1746107115.079258}
+
+data: {"v": {"response": {"message_id": 2, "parent_id": 1, "model": "", "role": "ASSISTANT", "content": "", "thinking_enabled": false, "thinking_content": null, "thinking_elapsed_secs": null, "ban_edit": false, "ban_regenerate": false, "status": "WIP", "accumulated_token_usage": 0, "files": [], "tips": [], "inserted_at": 1746107115.060756, "search_enabled": false, "search_status": null, "search_results": null}}}
+
+data: {"v": "1", "p": "response/content", "o": "APPEND"}
+
+data: {"v": " +"}
+
+data: {"v": " "}
+
+data: {"v": "5"}
+
+data: {"v": " ="}
+
+data: {"v": " "}
+
+data: {"v": "6"}
+
+data: {"v": 39, "p": "response/accumulated_token_usage", "o": "SET"}
+
+data: {"v": "FINISHED", "p": "response/status"}
+
+event: finish
+data: {}
+
+event: update_session
+data: {"updated_at":1746107119.557704}
+
+event: title
+data: {"content":"Basic Addition: 1 Plus 5 Equals 6"}
+
+event: close
+data: {}`
+
+  let b = a.trim().split('\n\n')
+  console.log(b)
+  // for (const i of b) {
+  //   await addMessage(i, user.deepseek)
+  // }
+  //
+  // for (const i of b) {
+  //   await addMessage(i, user.deepseek)
+  //   await addMessage(i, user.deepseek)
+  // }
+
+  //
+  // let c = 'event: title\ndata: {"content":"五一假期出行计划建议"}\n\nevent: close\ndata: {}\n\n'
+  //
+  // console.log(999999, parseText(c))
+
+
+  await scrollToBottom()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize);
+})
+
+const messages = reactive<Message[]>([
+  // {
+  //   user: user.deepseek,
+  //   content: 'Hello there! How are you doing today?\n\nI was wondering if you could help me with something...',
+  //   createTime: getTimestamp(),
+  //   finished: true,
+  //       render: 0,
+  // },
+  // {
+  //   user: user.deepseek,
+  //   content: 'Hi Alice! I\'m doing well, thanks. **What can I help you with?**',
+  //   createTime: getTimestamp(),
+  //   finished: true,
+//       render: 0,
+  // },
+  // {
+  //   user: user.me,
+  //   content: 'I need help with:\n1. Vue components\n2. TypeScript\n3. Markdown rendering\n\n*Can you assist?*',
+  //   createTime: getTimestamp(),
+  //   finished: true,
+  //   render: 0,
+  // },
+  // {
+  //   user: user.deepseek,
+  //   content: 'Absolutely! Here are some resources:\n\n- [Vue Documentation](https://vuejs.org)\n- [TypeScript Handbook](https://www.typescriptlang.org/docs)\n\n```javascript\n// Example code\nconst message = "Happy coding!"\n```',
+  //   createTime: getTimestamp(),
+  //   finished: true,
+  //   render: 0,
+  // }
+])
+
+let currentMessage: Message | null = null
+
+const addMessage = async (content: string, user: User) => {
+  if (user.id === 'me') {
+    currentMessage = {
+      user: user,
+      content: content,
+      createTime: getTimestamp(),
+      finished: true,
+      render: 0,
+    }
+    messages.push(currentMessage)
+    if (settings.saveMessage) {
+      const messageId = await dbManager?.addMessage({
+        userId: currentMessage.user.id,
+        content: currentMessage.content,
+        createTime: currentMessage.createTime,
+      })
+      console.log('Added message with ID:', messageId)
+    }
+  } else {
+    const rs = parseText(content)
+
+    for (const r of rs) {
+      // console.log('r', r)
+
+      if (r.event === 'ready') {
+        currentMessage = {
+          user: user,
+          content: '',
+          createTime: getTimestamp(),
+          finished: false,
+          render: 0,
+        }
+        messages.push(currentMessage)
+      } else if (r.event === 'finish') {
+        if (currentMessage) {
+          currentMessage.finished = true
+          const messageId = await dbManager?.addMessage({
+            userId: currentMessage.user.id,
+            content: currentMessage.content,
+            createTime: currentMessage.createTime,
+          })
+          console.log('Added message with ID:', messageId)
+        }
+      } else if (r.event === 'update_session') {
+        if (r.data && 'updated_at' in r.data && r.data.updated_at) {
+          if (currentMessage) {
+            currentMessage.updateTime = Math.ceil(r.data.updated_at)
+          }
+        }
+      } else if (r.event === 'title') {
+        if (r.data && 'content' in r.data) {
+          if (currentMessage) {
+            currentMessage.title = r.data.content
+          }
+        }
+      } else if (r.event === 'close') {
+        if (settings.saveMessage && currentMessage) {
+        }
+      } else if (!r.event && (r.data && 'p' in r.data)) {
+        if (r.data.p === 'response/content') {
+          if (currentMessage) {
+            currentMessage.content += r.data?.v
+            messages.push({} as any)
+            messages.pop()
+            // console.log('messages', messages)
+          }
+        } else {
+        }
+      } else {
+        if (r.data?.v && typeof r.data?.v === 'string') {
+          if (currentMessage) {
+            currentMessage.content += r.data?.v
+            messages.push({} as any)
+            messages.pop()
+            // console.log('messages', messages)
+          }
+        }
+      }
+    }
+
+  }
+  await scrollToBottom()
 }
 
 const options = computed(() =>
-    data.map((d) => {
+    users.map((d) => {
       return {
         value: d.id,
         label: d.name,
       }
+    }).concat({
+      value: 'all',
+      label: t.value.allMembers,
     })
 )
 
-const who = ref('')
+const content = ref('')
 
 const scrollContainer = ref<HTMLDivElement | null>(null)
 
 const sendMessage = async () => {
-  addMessage(who.value, true)
+  if (window.electronAPI) {
+    window.electronAPI.sendMessage('chat', {from: 'me', to: 'deepseek', content: content.value})
+  }
+
+  await addMessage(content.value, user.me)
+  content.value = ''
+}
+
+const scrollToBottom = async () => {
   await nextTick(() => {
     setTimeout(() => {
       const parentElement = scrollContainer.value?.parentElement
@@ -285,6 +504,57 @@ const sendMessage = async () => {
       }
     }, 0)
   })
+}
+
+const inputRef = ref<Mentions | null>(null)
+
+const focusInput = () => {
+  if (inputRef.value) {
+    (inputRef.value as Mentions)?.focus()
+  }
+}
+
+const newChatStyle = computed(() => {
+  return {
+    width: '100%',
+    textAlign: !collapsed ? 'left' : 'center'
+  }
+})
+
+const loading = ref<boolean>(false)
+const imageUrl = ref<string>(settings.avatar || '')
+
+const beforeUpload = (file: File) => {
+  const url = URL.createObjectURL(file)
+  loading.value = true
+  imageUrl.value = url
+
+  const reader = new FileReader()
+  reader.addEventListener('load', () => {
+    settings.avatar = reader.result as string
+  })
+  reader.readAsDataURL(file)
+
+  user.me.avatar = url
+  loading.value = false
+  return false
+}
+
+const reset = async () => {
+  await dbManager?.clearMessage()
+
+  settings.groupName = settingsDefault.groupName
+  settings.myName = settingsDefault.myName
+  settings.saveMessage = settingsDefault.saveMessage
+  settings.showNickname = settingsDefault.showNickname
+  settings.lang = settingsDefault.lang
+  settings.avatar = settingsDefault.avatar
+
+  if (settings.avatar) {
+    imageUrl.value = settings.avatar
+  }
+
+  message.success(t.value.resetFinished)
 }
 
 </script>
@@ -304,59 +574,60 @@ const sendMessage = async () => {
     }"
   >
     <a-layout>
-      <a-layout-sider :style="siderStyle" :width="300">
+      <a-layout-sider :style="siderStyle" :width="!collapsed ? 300 : 120">
         <a-affix :offset-top="0">
-          <a-space direction="vertical" size="large" style="width: calc(100% - 60px); margin: 0 20px; line-height: 0">
-            <a-button :icon="h(PlusOutlined)" @click="" size="large" style="width: 100%; text-align: left">
-              新对话
+          <a-space direction="vertical" size="large" style="width: calc(100% - 50px); margin: 10px 20px;">
+            <a-button :icon="h(PlusOutlined)" @click="focusInput()" :shape="!collapsed ? 'default' : 'default'"
+                      size="large" :style="newChatStyle">
+              {{ !collapsed ? t.newChat : '' }}
             </a-button>
           </a-space>
         </a-affix>
+        <div style="height: calc(100% - 74px); overflow-x: scroll;">
+          <a-list item-layout="horizontal" :data-source="users">
+            <template #renderItem="{ item}">
+              <a-list-item>
+                <a-list-item-meta
+                >
+                  <template #title v-if="!collapsed">
+                    <a-flex gap="middle" align="start" vertical>
+                      <a :href="item.link" target="_blank">{{ item.name }}</a>
+                    </a-flex>
+                  </template>
 
+                  <template #description v-if="!collapsed">
+                    <a-flex gap="middle" align="start" vertical>
+                      <a-typography>
+                        <a-typography-paragraph :ellipsis="{ rows: 2, expandable: false, symbol: 'more' }"
+                                                style="margin-bottom: 0;"
+                                                :content="item.desc">
+                        </a-typography-paragraph>
+                      </a-typography>
+                    </a-flex>
+                  </template>
 
-        <a-list item-layout="horizontal" :data-source="data">
-          <template #renderItem="{ item}">
-            <a-list-item>
-              <a-list-item-meta
-              >
-                <template #title>
-                  <a-flex gap="middle" align="start" vertical>
-                    <a :href="item.link" target="_blank">{{ item.name }}</a>
-                  </a-flex>
-                </template>
-
-                <template #description>
-                  <a-flex gap="middle" align="start" vertical>
-                    <a-typography>
-                      <a-typography-paragraph :ellipsis="{ rows: 2, expandable: false, symbol: 'more' }"
-                                              style="margin-bottom: 0; text-align: left"
-                                              :content="item.desc">
-                      </a-typography-paragraph>
-                    </a-typography>
-                  </a-flex>
-                </template>
-
-                <template #avatar>
-                  <a-badge>
-                    <template #count>
-                      <ClockCircleOutlined style="color: #f5222d"/>
-                    </template>
-                    <a-tooltip>
-                      <template #title>{{ item.name }}</template>
-                      <a-avatar :src="getImageUrl(item.avatar)" shape="square" :size="64">
-                        <template #icon>
-                          <UserOutlined/>
-                        </template>
-                      </a-avatar>
-                    </a-tooltip>
-                  </a-badge>
-                </template>
-              </a-list-item-meta>
-            </a-list-item>
-          </template>
-        </a-list>
-
+                  <template #avatar>
+                    <a-badge :dot="true" :color="item.online ? 'green' : 'red'">
+                      <!--                      <template #count>-->
+                      <!--                        <ClockCircleOutlined style="color: #f5222d"/>-->
+                      <!--                      </template>-->
+                      <a-tooltip>
+                        <template #title>{{ item.name }}</template>
+                        <a-avatar :src="getImageUrl(item.avatar)" shape="square" :size="64">
+                          <template #icon>
+                            <UserOutlined/>
+                          </template>
+                        </a-avatar>
+                      </a-tooltip>
+                    </a-badge>
+                  </template>
+                </a-list-item-meta>
+              </a-list-item>
+            </template>
+          </a-list>
+        </div>
       </a-layout-sider>
+
       <a-layout>
         <a-layout-header :style="headerStyle">
           <a-flex gap="middle" justify="space-between" align="center">
@@ -370,15 +641,9 @@ const sendMessage = async () => {
             </a-flex>
           </a-flex>
 
-
         </a-layout-header>
         <a-layout-content :style="contentStyle">
           <div ref="scrollContainer" class="scrollContainer">
-            <div>
-              <img src="/ai0-512x512.png" class="logo" alt="logo"/>
-            </div>
-            <MarkDown :md="msg"></MarkDown>
-
             <Chat :messages="messages" :settings="settings"></Chat>
           </div>
         </a-layout-content>
@@ -386,12 +651,14 @@ const sendMessage = async () => {
           <a-divider/>
           <div style="position: relative; display: flex;">
             <a-mentions
+                ref="inputRef"
                 autofocus
-                v-model:value="who"
+                v-model:value="content"
                 rows="4"
                 :placeholder="t.mention"
                 :options="options"
-                style="text-align: left"
+                @keyup.enter.native="sendMessage"
+                @pressenter="sendMessage"
             ></a-mentions>
             <a-flex justify="flex-end" align="flex-end" class="send">
               <a-space size="large" style="margin-right: 10px">
@@ -414,7 +681,7 @@ const sendMessage = async () => {
               </a-space>
               <a-space size="large">
                 <a-tooltip :title="t.send">
-                  <a-button type="primary" shape="circle" :icon="h(SendOutlined)" @click="sendMessage()"/>
+                  <a-button type="primary" shape="circle" :icon="h(SendOutlined)" @click="sendMessage"/>
                 </a-tooltip>
               </a-space>
             </a-flex>
@@ -422,7 +689,6 @@ const sendMessage = async () => {
         </a-layout-footer>
       </a-layout>
     </a-layout>
-
 
     <a-drawer
         v-model:open="open"
@@ -432,31 +698,30 @@ const sendMessage = async () => {
         style="color: red"
         :title="settings.groupName"
         placement="right"
-        @after-open-change="afterOpenChange"
     >
       <a-flex wrap="wrap" gap="large">
-        <a-avatar v-for="item in data" :key="item" shape="square" :size="64" @click=""
-                  :src="getImageUrl(item.avatar)">
-          <template #icon>
-            <UserOutlined/>
-          </template>
-        </a-avatar>
+        <a-tooltip v-for="item in users" :key="item">
+          <template #title>{{ item.name }}</template>
+          <a-avatar shape="square" :size="64" @click=""
+                    :src="getImageUrl(item.avatar)">
+            <template #icon>
+              <UserOutlined/>
+            </template>
+          </a-avatar>
+        </a-tooltip>
       </a-flex>
 
       <a-divider/>
 
       <a-form
-          :model="formState"
           name="basic"
           :label-col="{ span: 8 }"
           :wrapper-col="{ span: 16 }"
           autocomplete="off"
-          @finish="onFinish"
-          @finishFailed="onFinishFailed"
       >
         <a-flex gap="middle" vertical>
           <a-typography>
-            <a-typography-paragraph strong>群公告</a-typography-paragraph>
+            <a-typography-paragraph strong>{{ t.notice }}</a-typography-paragraph>
             <template v-for="(line, index) in lines">
               <li v-if="index < lineMax">
                 <a-typography-paragraph :key="index" :content="line"/>
@@ -466,28 +731,63 @@ const sendMessage = async () => {
               </li>
             </template>
             <a-typography-link :v-if="ellipsis && lines.length >= lineMax" @click="ellipsis=!ellipsis">
-              {{ ellipsis ? '更多' : '收缩' }}
+              {{ ellipsis ? t.more : t.short }}
             </a-typography-link>
+            <a-typography-paragraph/>
           </a-typography>
           <a-typography>
-            <a-typography-paragraph strong>群聊名稱</a-typography-paragraph>
+            <a-typography-paragraph strong>{{ t.groupName }}</a-typography-paragraph>
             <a-typography-paragraph v-model:content="settings.groupName" editable/>
           </a-typography>
           <a-typography>
-            <a-typography-paragraph strong>我在本群的暱稱</a-typography-paragraph>
+            <a-typography-paragraph strong>{{ t.myName }}</a-typography-paragraph>
             <a-typography-paragraph v-model:content="settings.myName" editable/>
           </a-typography>
 
-          <a-form-item label="查找聊天记录">
+          <a-form-item :label="t.searchMessage">
             <RightOutlined @click="" style="width: 100%"/>
           </a-form-item>
 
-          <a-form-item label="保存聊天记录">
-            <a-switch v-model:checked="formState.remember"/>
+          <a-form-item :label="t.saveMessage">
+            <a-switch v-model:checked="settings.saveMessage"/>
           </a-form-item>
 
-          <a-form-item label="显示群成员昵称">
-            <a-switch v-model:checked="formState.remember"/>
+          <a-form-item :label="t.showNickname">
+            <a-switch v-model:checked="settings.showNickname"/>
+          </a-form-item>
+
+          <a-form-item :label="t.avatar">
+            <a-upload
+                name="avatar"
+                list-type="picture-card"
+                class="avatar-uploader"
+                :show-upload-list="false"
+                :before-upload="beforeUpload"
+            >
+              <a-avatar v-if="imageUrl" :src="imageUrl" shape="square" :size="64">
+                <template #icon>
+                  <UserOutlined/>
+                </template>
+              </a-avatar>
+              <div v-else>
+                <loading-outlined v-if="loading"></loading-outlined>
+                <plus-outlined v-else></plus-outlined>
+                <div>{{ t.upload }}</div>
+              </div>
+            </a-upload>
+          </a-form-item>
+
+          <a-form-item :label="t.language">
+            <a-radio-group v-model:value="settings.lang" button-style="solid">
+              <a-radio-button v-for="lang in Lang" :key="lang" :value="lang">
+                {{ lang }}
+              </a-radio-button>
+            </a-radio-group>
+          </a-form-item>
+
+          <a-form-item :label="t.reset">
+            <a-button type="primary" @click="reset">{{ t.reset }}
+            </a-button>
           </a-form-item>
         </a-flex>
       </a-form>
@@ -496,31 +796,6 @@ const sendMessage = async () => {
 </template>
 
 <style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
-
-pre {
-  margin: 0; /* 去掉默认的外边距 */
-  padding: 0; /* 去掉默认的内边距 */
-  background-color: transparent; /* 去掉默认的白色背景 */
-  border: none; /* 去掉默认的边框 */
-  font-family: inherit; /* 使用继承的字体 */
-  font-size: inherit; /* 使用继承的字体大小 */
-  white-space: pre-wrap; /* 允许自动换行 */
-  overflow-x: auto; /* 允许水平滚动 */
-}
 
 .ant-layout.ant-layout-has-sider {
   height: 100%;
@@ -535,7 +810,6 @@ pre {
 h4.ant-typography {
   margin-top: 0;
   margin-bottom: 0;
-  color: white;
 }
 
 a {
