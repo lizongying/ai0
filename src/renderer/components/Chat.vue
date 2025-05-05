@@ -1,12 +1,45 @@
 <script setup lang="ts">
-import {reactive, watch} from 'vue'
-import {marked} from 'marked'
-import {UserOutlined} from '@ant-design/icons-vue'
+import {computed, reactive, watch} from 'vue'
+import {Marked, marked, type MarkedExtension} from 'marked'
+import {
+  DeleteOutlined,
+  DownloadOutlined,
+  FileMarkdownOutlined,
+  FileTextOutlined,
+  FileWordOutlined,
+  UserOutlined
+} from '@ant-design/icons-vue'
 import {getImageUrl} from '../utils.ts'
+import translations from '../../i18n.ts'
+import markedPlaintify from 'marked-plaintify'
 
-// import translations from '../../i18n'
-//
-// let t = translations.hant
+
+import markedShiki from 'marked-shiki'
+import { codeToHtml } from 'shiki'
+
+import { markedHighlight } from "marked-highlight";
+import 'highlight.js/styles/github-dark.css';
+
+import hljs from 'highlight.js';
+
+enum Lang {
+  Hant = '漢字',
+  Hans = '简体字',
+  En = 'English',
+}
+
+const t = computed(() => {
+  switch (props.settings.lang) {
+    case Lang.En:
+      return translations.en
+    case Lang.Hant:
+      return translations.hant
+    case Lang.Hans:
+      return translations.hans
+    default:
+      return translations.en
+  }
+})
 
 const props = defineProps<{ messages: Message[], settings: Settings }>()
 
@@ -40,15 +73,53 @@ watch(() => props.messages, async (newMessages) => {
           const m = messages[index]
           // console.log(index, 'msg.content.length', msg.content.length, 'm.render', m?.render, 'msg.content', msg.content)
           if (m && m.render >= msg.content.length && m.content === msg.content) {
-            // console.log(index, 'msg.content:', msg.content, 'noneed', 'html:', m?.html)
+            if (msg.title) {
+              m.title = msg.title
+              console.log('set title',  m.title, m)
+            }
+            if (msg.finished) {
+              m.finished = msg.finished
+              console.log('set finished',  m.finished, m)
+            }
             return m
           }
+
+
+          console.log(parseMarkdown)
+          const html = await (marked.use(
+              markedShiki({
+                async highlight(code, lang) {
+                  return await codeToHtml(code, { lang, theme: 'github-dark' })
+                },
+                container: `<figure class="highlighted-code">
+<button class="btn-copy" style="cursor: pointer;">Copy</button>
+%s
+</figure>
+`
+              }) as MarkedExtension).parse(msg.content)
+          )
+
+          console.log(html)
+
+          const html2 = await (new Marked(
+              markedHighlight({
+                emptyLangClass: 'hljs',
+                langPrefix: 'hljs language-',
+                highlight(code, lang, _) {
+                  const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                  return hljs.highlight(code, { language }).value;
+                }
+              })
+          )).parse(msg.content)
+
+          console.log(html2)
 
           if (msg.content) {
             return {
               ...msg,
               render: msg.content.length,
-              html: await parseMarkdown(msg.content),
+              // html: await parseMarkdown(msg.content),
+              html: html,
             }
           } else {
             return msg
@@ -66,6 +137,52 @@ watch(() => props.messages, async (newMessages) => {
 
 const messageContainerClass = (me: boolean): string => {
   return me ? 'message-container right' : 'message-container left'
+}
+
+
+const downloadTextFile = (content: string, filename = '') => {
+  const blob = new Blob([content], {type: 'text/plain'})
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+
+  document.body.appendChild(a)
+  a.click()
+
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+const download = (md: string, title: string | undefined) => {
+  downloadTextFile(md, (title || md.split('\n')[0].slice(0, 10)) + '.txt')
+}
+
+const copyAsDoc = async (html: string) => {
+  const outerHTML = html
+  const type = 'text/html'
+  const clipboardItemData = {
+    [type]: new Blob([outerHTML], {type}),
+  };
+  try {
+    console.log('html:', outerHTML)
+    const clipboardItem = new ClipboardItem(clipboardItemData)
+    await navigator.clipboard.write([clipboardItem])
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const copyAsTxt = async (md: string) => {
+  const txt = await new Marked({gfm: true})
+      .use(markedPlaintify())
+      .parse(md)
+  await navigator.clipboard.writeText(txt.replace(/\n+/g, '\n'))
+}
+
+const copyAsMd = async (md: string) => {
+  await navigator.clipboard.writeText(md)
 }
 
 </script>
@@ -89,7 +206,30 @@ const messageContainerClass = (me: boolean): string => {
         <div
             class="speech-bubble"
             v-html="message.html"
-        ></div>
+        >
+        </div>
+        <a-space size="small" class="options" v-if="message.finished">
+          <a-tooltip>
+            <template #title>{{ t.delete }}</template>
+            <DeleteOutlined @click=""/>
+          </a-tooltip>
+          <a-tooltip>
+            <template #title>{{ t.download }}</template>
+            <DownloadOutlined @click="download(message.content, message.title)"/>
+          </a-tooltip>
+          <a-tooltip>
+            <template #title>{{ t.copyAsDoc }}</template>
+            <FileWordOutlined @click="copyAsDoc(message.html||'')"/>
+          </a-tooltip>
+          <a-tooltip>
+            <template #title>{{ t.copyAsTxt }}</template>
+            <FileTextOutlined @click="copyAsTxt(message.content)"/>
+          </a-tooltip>
+          <a-tooltip>
+            <template #title>{{ t.copyAsMd }}</template>
+            <FileMarkdownOutlined @click="copyAsMd(message.content)"/>
+          </a-tooltip>
+        </a-space>
       </div>
       <a-tooltip v-if="message.user.me">
         <template #title>{{ message.user.name }}</template>
@@ -156,7 +296,7 @@ const messageContainerClass = (me: boolean): string => {
 }
 
 .left .speech-bubble {
-  background-color: #2196F3;
+  background-color: #444;
   border-top-left-radius: 0;
   align-self: flex-start;
 }
@@ -164,6 +304,14 @@ const messageContainerClass = (me: boolean): string => {
 .right .speech-bubble {
   background-color: #4CAF50;
   border-top-right-radius: 0;
+  align-self: flex-end;
+}
+
+.left .options {
+  align-self: flex-start;
+}
+
+.right .options {
   align-self: flex-end;
 }
 
@@ -180,7 +328,7 @@ const messageContainerClass = (me: boolean): string => {
 .left .speech-bubble::before {
   left: -8px;
   border-width: 0 8px 8px 0;
-  border-color: transparent #2196F3 transparent transparent;
+  border-color: transparent #444 transparent transparent;
 }
 
 .right .speech-bubble::after {

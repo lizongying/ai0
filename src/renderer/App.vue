@@ -7,7 +7,8 @@ import {
   PlusOutlined,
   RightOutlined,
   SendOutlined,
-  UserOutlined,
+  TranslationOutlined,
+  UserOutlined
 } from '@ant-design/icons-vue'
 import {message, theme} from 'ant-design-vue'
 
@@ -276,11 +277,12 @@ onMounted(async () => {
   let rs = await dbManager.findMessages(pageSize, offset)
   console.log('rs', rs)
   if (rs) {
-    for (const i of rs) {
+    for (const i of rs.reverse()) {
       const u = user[i.userId]
       if (u) {
         currentMessage = {
           user: u,
+          title: i.title,
           content: i.content,
           createTime: i.createTime,
           finished: true,
@@ -346,7 +348,10 @@ data: {}`
   // console.log(999999, parseText(c))
 
 
-  await scrollToBottom()
+  setTimeout(async() => {
+    await scrollToBottom()
+  }, 1000)
+
 })
 
 onBeforeUnmount(() => {
@@ -368,20 +373,20 @@ const messages = reactive<Message[]>([
   //   finished: true,
 //       render: 0,
   // },
-  // {
-  //   user: user.me,
-  //   content: 'I need help with:\n1. Vue components\n2. TypeScript\n3. Markdown rendering\n\n*Can you assist?*',
-  //   createTime: getTimestamp(),
-  //   finished: true,
-  //   render: 0,
-  // },
-  // {
-  //   user: user.deepseek,
-  //   content: 'Absolutely! Here are some resources:\n\n- [Vue Documentation](https://vuejs.org)\n- [TypeScript Handbook](https://www.typescriptlang.org/docs)\n\n```javascript\n// Example code\nconst message = "Happy coding!"\n```',
-  //   createTime: getTimestamp(),
-  //   finished: true,
-  //   render: 0,
-  // }
+  {
+    user: user.me,
+    content: 'I need help with:\n1. Vue components\n2. TypeScript\n3. Markdown rendering\n\n*Can you assist?*',
+    createTime: getTimestamp(),
+    finished: true,
+    render: 0,
+  },
+  {
+    user: user.deepseek,
+    content: 'Absolutely! Here are some resources:\n\n- [Vue Documentation](https://vuejs.org)\n- [TypeScript Handbook](https://www.typescriptlang.org/docs)\n\n```javascript\n// Example code\nconst message = "Happy coding!"\n```',
+    createTime: getTimestamp(),
+    finished: true,
+    render: 0,
+  }
 ])
 
 let currentMessage: Message | null = null
@@ -399,6 +404,7 @@ const addMessage = async (content: string, user: User) => {
     if (settings.saveMessage) {
       const messageId = await dbManager?.addMessage({
         userId: currentMessage.user.id,
+        title: currentMessage.title,
         content: currentMessage.content,
         createTime: currentMessage.createTime,
       })
@@ -422,12 +428,8 @@ const addMessage = async (content: string, user: User) => {
       } else if (r.event === 'finish') {
         if (currentMessage) {
           currentMessage.finished = true
-          const messageId = await dbManager?.addMessage({
-            userId: currentMessage.user.id,
-            content: currentMessage.content,
-            createTime: currentMessage.createTime,
-          })
-          console.log('Added message with ID:', messageId)
+          messages.push({} as any)
+          messages.pop()
         }
       } else if (r.event === 'update_session') {
         if (r.data && 'updated_at' in r.data && r.data.updated_at) {
@@ -439,10 +441,20 @@ const addMessage = async (content: string, user: User) => {
         if (r.data && 'content' in r.data) {
           if (currentMessage) {
             currentMessage.title = r.data.content
+            console.log('title', currentMessage.title)
+            messages.push({} as any)
+            messages.pop()
           }
         }
       } else if (r.event === 'close') {
         if (settings.saveMessage && currentMessage) {
+          const messageId = await dbManager?.addMessage({
+            userId: currentMessage.user.id,
+            title: currentMessage.title,
+            content: currentMessage.content,
+            createTime: currentMessage.createTime,
+          })
+          console.log('Added message with ID:', messageId)
         }
       } else if (!r.event && (r.data && 'p' in r.data)) {
         if (r.data.p === 'response/content') {
@@ -661,7 +673,14 @@ const reset = async () => {
                 @pressenter="sendMessage"
             ></a-mentions>
             <a-flex justify="flex-end" align="flex-end" class="send">
-              <a-space size="large" style="margin-right: 10px">
+              <a-space size="small">
+                <a-tooltip :title="t.image">
+                  <a-button shape="circle">
+                    <template #icon>
+                      <TranslationOutlined/>
+                    </template>
+                  </a-button>
+                </a-tooltip>
                 <a-tooltip :title="t.image">
                   <a-button shape="circle">
                     <template #icon>
@@ -669,8 +688,6 @@ const reset = async () => {
                     </template>
                   </a-button>
                 </a-tooltip>
-              </a-space>
-              <a-space size="large" style="margin-right: 10px">
                 <a-tooltip :title="t.file">
                   <a-button shape="circle">
                     <template #icon>
@@ -678,8 +695,6 @@ const reset = async () => {
                     </template>
                   </a-button>
                 </a-tooltip>
-              </a-space>
-              <a-space size="large">
                 <a-tooltip :title="t.send">
                   <a-button type="primary" shape="circle" :icon="h(SendOutlined)" @click="sendMessage"/>
                 </a-tooltip>

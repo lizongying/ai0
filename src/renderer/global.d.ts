@@ -33,6 +33,7 @@ declare global {
     interface MessageStore {
         id?: number
         userId: string
+        title?: string
         content: string
         createTime: number
     }

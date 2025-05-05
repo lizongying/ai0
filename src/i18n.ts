@@ -22,6 +22,11 @@ const translations = {
         allMembers: '全體',
         reset: '重置',
         resetFinished: '重置完成',
+        delete: '刪除',
+        downloadRaw: '下載',
+        copyAsDoc: '複製為Doc',
+        copyAsTxt: '複製為Txt',
+        copyAsMd: '複製為Markdown',
     },
     hans: {
         doc: '复制为DOC',
@@ -46,6 +51,11 @@ const translations = {
         allMembers: '全体',
         reset: '重置',
         resetFinished: '重置完成',
+        delete: '删除',
+        downloadRaw: '下载',
+        copyAsDoc: '复制为Doc',
+        copyAsTxt: '复制为Txt',
+        copyAsMd: '复制为Markdown',
     },
     en: {
         doc: 'Copy as DOC',
@@ -70,6 +80,11 @@ const translations = {
         allMembers: 'All',
         reset: 'Reset',
         resetFinished: 'Reset finished',
+        delete: 'Delete',
+        downloadRaw: 'Download',
+        copyAsDoc: 'Copy as Doc',
+        copyAsTxt: 'Copy as Txt',
+        copyAsMd: 'Copy as Markdown',
     },
 }
 
