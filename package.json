@@ -1,7 +1,7 @@
 {
   "name": "ai0",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "main": "dist/main/index.js",
   "scripts": {
@@ -13,6 +13,9 @@
     "app:arm64": "npx electron-builder --mac --linux --arm64",
     "app:x64": "npx electron-builder -mwl --x64"
   },
+  "author": "Li ZongYing",
+  "description": "本工具包裝了DeepSeek等大模型，可以在群組裡指揮他們，讓他們為你工作；可以一鍵導出到word、excel、txt等，並保留美化後的樣式。",
+  "license": "ISC",
   "homepage": "https://lizongying.github.io/ai0/",
   "dependencies": {
     "ant-design-vue": "^4.2.6",

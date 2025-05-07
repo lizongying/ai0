@@ -8,17 +8,13 @@ publish: null
 win:
   target: nsis
   icon: public/icon-256x256.ico
-  publish: null
 
 linux:
   target: deb
   maintainer: Li ZongYing <lizongying@msn.com>
   icon: public/icon-256x256.png
-  publish: null
 
 mac:
   target: dmg
   category: public.app-category.productivity
   icon: public/icon-256x256.icns
-  publish: null
-
