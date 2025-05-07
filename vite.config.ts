@@ -5,23 +5,14 @@ import electron from 'vite-plugin-electron'
 import {fileURLToPath} from 'url'
 import Components from 'unplugin-vue-components/vite'
 import {AntDesignVueResolver} from 'unplugin-vue-components/resolvers'
-import {createSvgIconsPlugin} from 'vite-plugin-svg-icons'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-
-console.log(!process.argv.includes('dev'))
 
 // https://vite.dev/config/
 export default defineConfig({
     plugins: [
         vue(),
-        createSvgIconsPlugin({
-            // Specify the icon folder to be cached
-            iconDirs: [resolve(__dirname, 'src/icons')],
-            // Specify symbolId format
-            symbolId: 'icon-[name]',
-        }),
         electron(!process.argv.includes('dev') ? [
             {
                 entry: 'src/main/index.ts', vite: {

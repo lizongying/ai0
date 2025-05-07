@@ -45,6 +45,11 @@ jobs:
           cd ${{ env.RUN_PATH }}
           yarn install
 
+      - name: Build
+        run: |
+          cd ${{ env.RUN_PATH }}
+          yarn run build
+
       - name: Build for arm64
         run: |
           cd ${{ env.RUN_PATH }}
