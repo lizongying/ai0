@@ -8,7 +8,7 @@ on:
 env:
   RUN_PATH: .
   PACKAGE_NAME: ai0
-  PACKAGE_VERSION: 0.1.0
+  PACKAGE_VERSION: 0.1.4
 
 permissions:
   contents: write
@@ -33,12 +33,17 @@ jobs:
           draft: false
           prerelease: false
 
-  build:
+  macos:
     runs-on: macos-latest
     needs: release
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
       - name: Install dependencies
         run: |
@@ -99,6 +104,33 @@ jobs:
           asset_path: ${{ env.RUN_PATH }}/releases/${{ env.PACKAGE_NAME }}_${{ env.PACKAGE_VERSION }}_amd64.deb
           asset_name: ${{ env.PACKAGE_NAME }}_${{ env.PACKAGE_VERSION }}_amd64.deb
           asset_content_type: application/octet-stream
+
+  windows:
+    runs-on: windows-latest
+    needs: release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: |
+          cd ${{ env.RUN_PATH }}
+          yarn install
+
+      - name: Build
+        run: |
+          cd ${{ env.RUN_PATH }}
+          yarn run build
+
+      - name: Build for x64
+        run: |
+          cd ${{ env.RUN_PATH }}
+          yarn run app:win
 
       - name: Upload Release Asset exe
         uses: actions/upload-release-asset@v1
