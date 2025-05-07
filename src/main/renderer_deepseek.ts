@@ -12,14 +12,6 @@ const hookRequest = () => {
     XMLHttpRequest.prototype.send = new Proxy(originalSend, {
         apply: (target, thisArg, argumentsList) => {
             if (thisArg._requestUrl === '/api/v0/chat/completion') {
-                // thisArg.addEventListener('load', () => {
-                //     console.log('XHR Response:', {
-                //         url: thisArg._requestUrl,
-                //         status: thisArg.status,
-                //         response: thisArg.responseText,
-                //     })
-                // })
-
                 const originalOnReadyStateChange = thisArg.onreadystatechange
                 thisArg.onreadystatechange = () => {
                     if (originalOnReadyStateChange) {
@@ -42,3 +34,4 @@ const hookRequest = () => {
 }
 
 hookRequest()
+console.log('hookRequest')

@@ -76,7 +76,7 @@ declare global {
     }
 
     interface Data {
-        v?: string | V
+        v?: string | V | Data[]
         updated_at?: number
         content?: string
         p?: string

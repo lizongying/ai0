@@ -22,15 +22,31 @@ class DatabaseManager {
     }
 
     async initialize(): Promise<void> {
-        this.db = await openDB<Ai0DB>(this.dbName, this.version, {
-            upgrade(db) {
-                const messages = db.createObjectStore('messages', {
-                    keyPath: 'id',
-                    autoIncrement: true,
-                })
-                messages.createIndex('by-userId', 'userId')
-            },
-        })
+        console.log('db initialize')
+        try {
+            this.db = await openDB<Ai0DB>(this.dbName, this.version, {
+                blocked() {
+                    console.log('blocked');
+                },
+                upgrade(db) {
+                    const messages = db.createObjectStore('messages', {
+                        keyPath: 'id',
+                        autoIncrement: true,
+                    })
+                    messages.createIndex('by-userId', 'userId')
+                },
+                blocking() {
+                    console.log('blocking');
+                },
+                terminated() {
+                    console.log('terminated');
+                },
+            })
+            console.log('Database opened successfully');
+        } catch (error) {
+            console.error('Failed to open/create IndexedDB:', error);
+        }
+        console.log('this.db',this.db)
     }
 
     async findMessage(id: number): Promise<MessageStore | undefined> {

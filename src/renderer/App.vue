@@ -293,101 +293,37 @@ onMounted(async () => {
     }
   }
 
-  let a = `event: ready
-data: {}
-
-event: update_session
-data: {"updated_at":1746107115.079258}
-
-data: {"v": {"response": {"message_id": 2, "parent_id": 1, "model": "", "role": "ASSISTANT", "content": "", "thinking_enabled": false, "thinking_content": null, "thinking_elapsed_secs": null, "ban_edit": false, "ban_regenerate": false, "status": "WIP", "accumulated_token_usage": 0, "files": [], "tips": [], "inserted_at": 1746107115.060756, "search_enabled": false, "search_status": null, "search_results": null}}}
-
-data: {"v": "1", "p": "response/content", "o": "APPEND"}
-
-data: {"v": " +"}
-
-data: {"v": " "}
-
-data: {"v": "5"}
-
-data: {"v": " ="}
-
-data: {"v": " "}
-
-data: {"v": "6"}
-
-data: {"v": 39, "p": "response/accumulated_token_usage", "o": "SET"}
-
-data: {"v": "FINISHED", "p": "response/status"}
-
-event: finish
-data: {}
-
-event: update_session
-data: {"updated_at":1746107119.557704}
-
-event: title
-data: {"content":"Basic Addition: 1 Plus 5 Equals 6"}
-
-event: close
-data: {}`
-
-  let b = a.trim().split('\n\n')
-  console.log(b)
-  // for (const i of b) {
-  //   await addMessage(i, user.deepseek)
-  // }
-  //
-  // for (const i of b) {
-  //   await addMessage(i, user.deepseek)
-  //   await addMessage(i, user.deepseek)
-  // }
-
-  //
-  // let c = 'event: title\ndata: {"content":"五一假期出行计划建议"}\n\nevent: close\ndata: {}\n\n'
-  //
-  // console.log(999999, parseText(c))
-
-
-  setTimeout(async() => {
+  setTimeout(async () => {
     await scrollToBottom()
   }, 1000)
 
+  // window.addEventListener('keydown', handleKeydown)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize);
+  window.removeEventListener('resize', handleResize)
+  // window.removeEventListener('keydown', handleKeydown)
 })
 
-const messages = reactive<Message[]>([
-  // {
-  //   user: user.deepseek,
-  //   content: 'Hello there! How are you doing today?\n\nI was wondering if you could help me with something...',
-  //   createTime: getTimestamp(),
-  //   finished: true,
-  //       render: 0,
-  // },
-  // {
-  //   user: user.deepseek,
-  //   content: 'Hi Alice! I\'m doing well, thanks. **What can I help you with?**',
-  //   createTime: getTimestamp(),
-  //   finished: true,
-//       render: 0,
-  // },
-  {
-    user: user.me,
-    content: 'I need help with:\n1. Vue components\n2. TypeScript\n3. Markdown rendering\n\n*Can you assist?*',
-    createTime: getTimestamp(),
-    finished: true,
-    render: 0,
-  },
-  {
-    user: user.deepseek,
-    content: 'Absolutely! Here are some resources:\n\n- [Vue Documentation](https://vuejs.org)\n- [TypeScript Handbook](https://www.typescriptlang.org/docs)\n\n```javascript\n// Example code\nconst message = "Happy coding!"\n```',
-    createTime: getTimestamp(),
-    finished: true,
-    render: 0,
-  }
-])
+// const handleKeydown = (e: KeyboardEvent) => {
+//   if (inputFocus.value && e.code === 'Enter'
+//       && !content.value.endsWith('@')
+//       && !content.value.endsWith('@deepseek ')
+//       && !content.value.endsWith('@doubao ')
+//       && !content.value.endsWith('@kimi ')
+//       && !content.value.endsWith('@zhida ')
+//       && !content.value.endsWith('@tongyi ')
+//       && !content.value.endsWith('@hunyuan ')
+//       && !content.value.endsWith('@zhipu ')
+//       && !content.value.endsWith('@mita ')
+//       && !content.value.endsWith('@zhipuqingyan ')
+//   ) {
+//     e.preventDefault()
+//     sendMessage()
+//   }
+// }
+
+const messages = reactive<Message[]>([])
 
 let currentMessage: Message | null = null
 
@@ -402,13 +338,17 @@ const addMessage = async (content: string, user: User) => {
     }
     messages.push(currentMessage)
     if (settings.saveMessage) {
-      const messageId = await dbManager?.addMessage({
-        userId: currentMessage.user.id,
-        title: currentMessage.title,
-        content: currentMessage.content,
-        createTime: currentMessage.createTime,
-      })
-      console.log('Added message with ID:', messageId)
+      try {
+        const messageId = await dbManager?.addMessage({
+          userId: currentMessage.user.id,
+          title: currentMessage.title,
+          content: currentMessage.content,
+          createTime: currentMessage.createTime,
+        })
+        console.log('Added message with ID:', messageId)
+      } catch (error) {
+        console.error('Failed to add message:', error)
+      }
     }
   } else {
     const rs = parseText(content)
@@ -448,13 +388,17 @@ const addMessage = async (content: string, user: User) => {
         }
       } else if (r.event === 'close') {
         if (settings.saveMessage && currentMessage) {
-          const messageId = await dbManager?.addMessage({
-            userId: currentMessage.user.id,
-            title: currentMessage.title,
-            content: currentMessage.content,
-            createTime: currentMessage.createTime,
-          })
-          console.log('Added message with ID:', messageId)
+          try {
+            const messageId = await dbManager?.addMessage({
+              userId: currentMessage.user.id,
+              title: currentMessage.title,
+              content: currentMessage.content,
+              createTime: currentMessage.createTime,
+            })
+            console.log('Added message with ID:', messageId)
+          } catch (error) {
+            console.error('Failed to add message:', error)
+          }
         }
       } else if (!r.event && (r.data && 'p' in r.data)) {
         if (r.data.p === 'response/content') {
@@ -465,6 +409,15 @@ const addMessage = async (content: string, user: User) => {
             // console.log('messages', messages)
           }
         } else {
+          if (Array.isArray(r.data?.v)) {
+            r.data?.v.forEach(i => {
+              if (i.v === 'TIMEOUT' && currentMessage) {
+                currentMessage.content = '服务器繁忙，请稍后再试。'
+                messages.push({} as any)
+                messages.pop()
+              }
+            })
+          }
         }
       } else {
         if (r.data?.v && typeof r.data?.v === 'string') {
@@ -483,7 +436,7 @@ const addMessage = async (content: string, user: User) => {
 }
 
 const options = computed(() =>
-    users.map((d) => {
+    users.filter(i => i !== user.me).map(d => {
       return {
         value: d.id,
         label: d.name,
@@ -494,17 +447,38 @@ const options = computed(() =>
     })
 )
 
+const selected = reactive<{ value: string }>({value: ''})
+
+const onSelect = (option: { value: string }) => {
+  selected.value = option.value
+  console.log('select', selected)
+}
+
 const content = ref('')
 
 const scrollContainer = ref<HTMLDivElement | null>(null)
 
+const regex = /@\w+/g
+const extractMentions = (text: string) => {
+  const mentions = text.match(regex)
+  return mentions || []
+}
+
 const sendMessage = async () => {
+  const text = content.value.trim()
+  if (!text) {
+    return
+  }
   if (window.electronAPI) {
-    window.electronAPI.sendMessage('chat', {from: 'me', to: 'deepseek', content: content.value})
+    const mentions = extractMentions(text)
+    mentions.forEach(i => {
+      console.log('mentions', i.slice(1))
+      window.electronAPI.sendMessage('chat', {from: 'me', to: i.slice(1), content: text})
+    })
   }
 
-  await addMessage(content.value, user.me)
-  content.value = ''
+  await addMessage(text, user.me)
+  content.value = selected.value ? `@${selected.value} ` : ''
 }
 
 const scrollToBottom = async () => {
@@ -569,6 +543,20 @@ const reset = async () => {
   message.success(t.value.resetFinished)
 }
 
+const openWindow = async (id: string) => {
+  window.electronAPI?.sendMessage('open', {from: 'me', to: id})
+}
+
+const newChat = async (id: string) => {
+  content.value = `@${id} `
+  focusInput()
+}
+
+const inputFocus = ref(true)
+const inputFocusChange = (focus: boolean) => {
+  inputFocus.value = focus
+}
+
 </script>
 
 <template>
@@ -603,7 +591,8 @@ const reset = async () => {
                 >
                   <template #title v-if="!collapsed">
                     <a-flex gap="middle" align="start" vertical>
-                      <a :href="item.link" target="_blank">{{ item.name }}</a>
+                      <!--                      <a :href="item.link" target="_blank">{{ item.name }}</a>-->
+                      <a @click="newChat(item.id)">{{ item.name }}</a>
                     </a-flex>
                   </template>
 
@@ -625,7 +614,8 @@ const reset = async () => {
                       <!--                      </template>-->
                       <a-tooltip>
                         <template #title>{{ item.name }}</template>
-                        <a-avatar :src="getImageUrl(item.avatar)" shape="square" :size="64">
+                        <a-avatar :src="getImageUrl(item.avatar)" shape="square" :size="64"
+                                  @click="openWindow(item.id)">
                           <template #icon>
                             <UserOutlined/>
                           </template>
@@ -669,8 +659,9 @@ const reset = async () => {
                 rows="4"
                 :placeholder="t.mention"
                 :options="options"
-                @keyup.enter.native="sendMessage"
-                @pressenter="sendMessage"
+                @blur="inputFocusChange(false)"
+                @focus="inputFocusChange(true)"
+                @select="onSelect"
             ></a-mentions>
             <a-flex justify="flex-end" align="flex-end" class="send">
               <a-space size="small">
@@ -717,7 +708,7 @@ const reset = async () => {
       <a-flex wrap="wrap" gap="large">
         <a-tooltip v-for="item in users" :key="item">
           <template #title>{{ item.name }}</template>
-          <a-avatar shape="square" :size="64" @click=""
+          <a-avatar shape="square" :size="64" @click="openWindow(item.id)"
                     :src="getImageUrl(item.avatar)">
             <template #icon>
               <UserOutlined/>

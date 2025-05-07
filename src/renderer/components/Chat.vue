@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {computed, reactive, watch} from 'vue'
-import {Marked, marked, type MarkedExtension} from 'marked'
+import {Markdown} from '../markdown.ts'
 import {
   DeleteOutlined,
   DownloadOutlined,
@@ -11,16 +11,10 @@ import {
 } from '@ant-design/icons-vue'
 import {getImageUrl} from '../utils.ts'
 import translations from '../../i18n.ts'
-import markedPlaintify from 'marked-plaintify'
 
-
-import markedShiki from 'marked-shiki'
-import { codeToHtml } from 'shiki'
-
-import { markedHighlight } from "marked-highlight";
-import 'highlight.js/styles/github-dark.css';
-
-import hljs from 'highlight.js';
+const markdown = new Markdown(false, false)
+const mdPlaintext = new Markdown(true, false)
+const mdHighlight = new Markdown(false, true)
 
 enum Lang {
   Hant = '漢字',
@@ -43,26 +37,7 @@ const t = computed(() => {
 
 const props = defineProps<{ messages: Message[], settings: Settings }>()
 
-const parseMarkdown = async (md: string): Promise<string> => {
-  try {
-    return (await marked.parse(md)) || ''
-  } catch (error) {
-    console.error('Markdown parsing error:', error)
-    return ''
-  }
-}
-
-// const messages = computed(() => {
-//     return props.messages.map(async (msg) => {
-//       return {
-//         ...msg,
-//         html: await parseMarkdown(msg.content)
-//       }
-//     })
-// })
-
 const messages = reactive<Message[]>([])
-
 
 watch(() => props.messages, async (newMessages) => {
   if (!newMessages?.length) return
@@ -75,59 +50,26 @@ watch(() => props.messages, async (newMessages) => {
           if (m && m.render >= msg.content.length && m.content === msg.content) {
             if (msg.title) {
               m.title = msg.title
-              console.log('set title',  m.title, m)
             }
             if (msg.finished) {
               m.finished = msg.finished
-              console.log('set finished',  m.finished, m)
             }
             return m
           }
 
-
-          console.log(parseMarkdown)
-          const html = await (marked.use(
-              markedShiki({
-                async highlight(code, lang) {
-                  return await codeToHtml(code, { lang, theme: 'github-dark' })
-                },
-                container: `<figure class="highlighted-code">
-<button class="btn-copy" style="cursor: pointer;">Copy</button>
-%s
-</figure>
-`
-              }) as MarkedExtension).parse(msg.content)
-          )
-
-          console.log(html)
-
-          const html2 = await (new Marked(
-              markedHighlight({
-                emptyLangClass: 'hljs',
-                langPrefix: 'hljs language-',
-                highlight(code, lang, _) {
-                  const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-                  return hljs.highlight(code, { language }).value;
-                }
-              })
-          )).parse(msg.content)
-
-          console.log(html2)
+          const html = await mdHighlight.render(msg.content)
 
           if (msg.content) {
             return {
               ...msg,
               render: msg.content.length,
-              // html: await parseMarkdown(msg.content),
-              html: html,
+              html: `<div style="padding:10px">${html}<div>`,
             }
           } else {
             return msg
           }
         })
     )
-
-    console.log('processed', processed)
 
     messages.splice(0, messages.length, ...processed)
   } catch (error) {
@@ -138,7 +80,6 @@ watch(() => props.messages, async (newMessages) => {
 const messageContainerClass = (me: boolean): string => {
   return me ? 'message-container right' : 'message-container left'
 }
-
 
 const downloadTextFile = (content: string, filename = '') => {
   const blob = new Blob([content], {type: 'text/plain'})
@@ -159,8 +100,8 @@ const download = (md: string, title: string | undefined) => {
   downloadTextFile(md, (title || md.split('\n')[0].slice(0, 10)) + '.txt')
 }
 
-const copyAsDoc = async (html: string) => {
-  const outerHTML = html
+const copyAsDoc = async (md: string) => {
+  const outerHTML = await markdown.render(md)
   const type = 'text/html'
   const clipboardItemData = {
     [type]: new Blob([outerHTML], {type}),
@@ -175,9 +116,11 @@ const copyAsDoc = async (html: string) => {
 }
 
 const copyAsTxt = async (md: string) => {
-  const txt = await new Marked({gfm: true})
-      .use(markedPlaintify())
-      .parse(md)
+  console.log('md', md)
+  const txt = await mdPlaintext.render(md)
+
+  console.log('plainText.render(md)', txt)
+
   await navigator.clipboard.writeText(txt.replace(/\n+/g, '\n'))
 }
 
@@ -219,7 +162,7 @@ const copyAsMd = async (md: string) => {
           </a-tooltip>
           <a-tooltip>
             <template #title>{{ t.copyAsDoc }}</template>
-            <FileWordOutlined @click="copyAsDoc(message.html||'')"/>
+            <FileWordOutlined @click="copyAsDoc(message.content)"/>
           </a-tooltip>
           <a-tooltip>
             <template #title>{{ t.copyAsTxt }}</template>

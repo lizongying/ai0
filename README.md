@@ -9,10 +9,14 @@
 - 支持大模型返回數據自動保存到本地
 - 支持群組對話方式樣式，表現更有趣
 
+<video src="./screenshots/1.webm" autoplay width="100%">
+</video>
 
-  ![image](./screenshots/img.png)
-  ![image](./screenshots/img_2.png)
+- 複製為Doc
+  ![複製為Doc](./screenshots/img.png)
 
+- 複製為Txt
+  ![複製為Txt](./screenshots/img_1.png)
 
 ## 下載地址
 

@@ -7,12 +7,18 @@ import {readFileSync} from 'node:fs'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const windows = new Map<string, BrowserWindow>()
+const windows = new Map<string, {
+    open: (headless: boolean) => void
+    close: () => void
+    window: BrowserWindow | null
+}>()
 
-const createMe = (): BrowserWindow => {
+const createMe = (headless: boolean): BrowserWindow => {
     const win = new BrowserWindow({
-        width: 800,
-        height: 600,
+        width: 1200,
+        height: 800,
+        show: !headless,
+        skipTaskbar: headless,
         webPreferences: {
             preload: path.join(__dirname, '../preload/me.js'),
             nodeIntegration: false,
@@ -25,17 +31,16 @@ const createMe = (): BrowserWindow => {
     } else {
         win.loadFile(path.join(__dirname, '../renderer/index.html')).then()
     }
-    win.webContents.openDevTools()
-    windows.set('me', win)
+    // win.webContents.openDevTools()
     return win
 }
 
-const createYiyan = () => {
+const createYiyan = (headless: boolean) => {
     const win = new BrowserWindow({
-        width: 800,
+        width: 1000,
         height: 600,
-        x: 0,
-        y: 0,
+        show: !headless,
+        skipTaskbar: headless,
         webPreferences: {
             preload: path.join(__dirname, '../preload/index.js'),
             nodeIntegration: false,
@@ -48,14 +53,15 @@ const createYiyan = () => {
 
     win.loadURL('https://yiyan.baidu.com/').then()
     // mainWindow.webContents.openDevTools()
-    windows.set('yiyan', win)
     return win
 }
 
-const createDeepseek = (): BrowserWindow => {
+const createDeepseek = (headless: boolean): BrowserWindow => {
     const win = new BrowserWindow({
-        width: 1200,
+        width: 1000,
         height: 600,
+        show: !headless,
+        skipTaskbar: headless,
         webPreferences: {
             preload: path.join(__dirname, '../preload/index.js'),
             nodeIntegration: false,
@@ -71,23 +77,17 @@ const createDeepseek = (): BrowserWindow => {
             .executeJavaScript(readFileSync(join(__dirname, 'renderer_deepseek.js'), 'utf-8'))
             .then()
     })
-    win.webContents.openDevTools()
-
-    // win.webContents.on('did-finish-load', () => {
-    //     win.webContents
-    //         .executeJavaScript(readFileSync(join(__dirname, 'renderer_deepseek.js'), 'utf-8'))
-    //         .then()
-    // })
-
-    windows.set('deepseek', win)
+    // win.webContents.openDevTools()
     return win
 }
 
 
-const createDoubao = (): BrowserWindow => {
+const createDoubao = (headless: boolean): BrowserWindow => {
     const win = new BrowserWindow({
-        width: 1200,
+        width: 1000,
         height: 600,
+        show: !headless,
+        skipTaskbar: headless,
         webPreferences: {
             // preload: path.join(__dirname, '../preload/index.js'),
             nodeIntegration: false,
@@ -101,14 +101,15 @@ const createDoubao = (): BrowserWindow => {
     win.loadURL('https://www.doubao.com/chat/').then(_ => {
     })
     win.webContents.openDevTools()
-    windows.set('doubao', win)
     return win
 }
 
-const createKimi = (): BrowserWindow => {
+const createKimi = (headless: boolean): BrowserWindow => {
     const win = new BrowserWindow({
-        width: 1200,
+        width: 1000,
         height: 600,
+        show: !headless,
+        skipTaskbar: headless,
         webPreferences: {
             // preload: path.join(__dirname, '../preload/index.js'),
             nodeIntegration: false,
@@ -122,27 +123,129 @@ const createKimi = (): BrowserWindow => {
     win.loadURL('https://kimi.moonshot.cn/chat/').then(_ => {
     })
     win.webContents.openDevTools()
-    windows.set('kimi', win)
     return win
 }
 
+let canClose = false
+
+const registerWindow = (name: string, createFn: (headless: boolean) => BrowserWindow, closeFn?: (win: BrowserWindow) => void) => {
+    const openManager = (headless: boolean) => {
+        const existing = windows.get(name)
+        if (existing?.window && !existing.window.isDestroyed()) {
+            if (headless) {
+                existing.window.hide()
+                existing.window.setSkipTaskbar(true)
+            } else {
+                existing.window.show()
+                existing.window.setSkipTaskbar(false)
+                existing.window.focus()
+            }
+
+            return
+        }
+
+        const window = createFn(headless)
+        windows.set(name, {
+            open: openManager,
+            close: () => {
+                if (!window.isDestroyed()) {
+                    window.close()
+                }
+            },
+            window: window,
+        })
+
+        window.on('close', (event) => {
+            if (name === me) {
+                canClose = true
+            }
+            if (!canClose) {
+                event.preventDefault()
+                openManager(true)
+            }
+        })
+
+        window.on('closed', () => {
+            closeFn?.(window)
+            const info = windows.get(name)
+            if (info) {
+                windows.set(name, {
+                    ...info,
+                    window: null
+                })
+            }
+        })
+    }
+
+    windows.set(name, {
+        open: openManager,
+        close: () => {
+            const info = windows.get(name)
+            if (info?.window && !info.window.isDestroyed()) {
+                if (canClose) {
+                    info.window.close()
+                } else {
+
+                }
+            }
+        },
+        window: null
+    })
+}
+
+const me = 'me'
+const deepseek = 'deepseek'
+const yiyan = 'yiyan'
+const doubao = 'doubao'
+const kimi = 'kimi'
+console.log('all window', me, deepseek, yiyan, doubao, kimi)
+console.log('all create', createMe, createDeepseek, createYiyan, createDoubao, createKimi)
+
+// registerWindow(yiyan, createYiyan)
+// registerWindow(doubao, createDoubao)
+// registerWindow(kimi, createKimi)
+registerWindow(deepseek, createDeepseek)
+registerWindow(me, createMe, () => {
+    for (const [name, info] of windows.entries()) {
+        if (name === me) {
+            continue
+        }
+        info.close()
+    }
+})
+
+const openAll = () => {
+    windows.get(deepseek)?.open(true)
+    windows.get(me)?.open(false)
+}
+
 app.whenReady().then(() => {
-    createMe()
-    console.log(createMe)
-    // createYiyan()
-    console.log(createYiyan)
-    // createDoubao()
-    console.log(createDoubao)
-    // createKimi()
-    console.log(createKimi)
-    createDeepseek()
-    console.log(createDeepseek)
+    openAll()
 
     ipcMain.on('chat', (_, message) => {
-        windows.get(message.to)?.webContents.send('chat', message)
+        windows.get(message.to)?.window?.webContents.send('chat', message)
+    })
+
+    ipcMain.on('open', (_, message) => {
+        windows.get(message.to)?.open(false)
+    })
+
+    ipcMain.on('close', (_, message) => {
+        windows.get(message.to)?.open(true)
+        // windows.get(message.to)?.close()
+    })
+
+    ipcMain.on('status', (_, message) => {
+        console.log('status', message)
     })
 })
 
+app.on('activate', () => {
+    openAll()
+    canClose = false
+})
+
 app.on('window-all-closed', () => {
+    console.log('window-all-closed')
     if (process.platform !== 'darwin') app.quit()
 })

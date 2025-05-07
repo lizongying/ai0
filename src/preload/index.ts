@@ -1,7 +1,6 @@
 const {ipcRenderer, contextBridge} = require('electron')
 import translations from '../i18n'
-import {Marked} from 'marked'
-import markedPlaintify from 'marked-plaintify'
+import {Markdown} from '../renderer/markdown.ts'
 
 let t = translations.hant
 
@@ -33,6 +32,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 document.addEventListener('DOMContentLoaded', () => {
     observerButtons()
+    observerInput()
     const sheet = new CSSStyleSheet()
     sheet.replaceSync(`
     .ai0>svg {
@@ -49,6 +49,25 @@ const observerButtons = () => {
                 const buttons = document.querySelectorAll('.ds-flex>.ds-flex')
                 if (buttons) {
                     addButton(buttons)
+                }
+            }
+        }
+    })
+
+    observer.observe(document, {
+        childList: true,
+        subtree: true
+    })
+}
+
+const observerInput = () => {
+    const observer = new MutationObserver((mutationsList) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                const input = document.querySelector('#chat-input')
+                if (input) {
+                    ipcRenderer.send('status', {ready: 'deepseek'})
+                    observer.disconnect()
                 }
             }
         }
@@ -141,6 +160,8 @@ const addDownload = () => {
     return div
 }
 
+const markdown = new Markdown(true, false)
+
 const addPopup = (ele: Element, name: string) => {
     let popup = document.createElement('div')
     popup.className = 'ds-floating-position-wrapper ds-theme'
@@ -171,9 +192,7 @@ const addPopup = (ele: Element, name: string) => {
                 console.log('md:', md)
                 chat(md)
                 try {
-                    const txt = await new Marked({gfm: true})
-                        .use(markedPlaintify())
-                        .parse(md)
+                    const txt = await markdown.render(md)
                     console.log('txt:', txt)
                     await navigator.clipboard.writeText(txt.replace(/\n+/g, '\n'))
                 } catch (err) {
@@ -226,7 +245,6 @@ const addPopup = (ele: Element, name: string) => {
         }
     })
 }
-
 
 const downloadTextFile = (content: string, filename = '') => {
     const blob = new Blob([content], {type: 'text/plain'})
