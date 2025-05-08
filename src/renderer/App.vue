@@ -49,7 +49,7 @@ const ellipsis = ref(true)
 const groupNotify = ref(`亲爱的群成员们：
 大家好！为营造高效、友好的交流环境，现就群内规则提醒如下，请仔细阅读：
 1️⃣ 群功能定位
-本群旨在AI技术交流，请勿发布无关广告、谣言或敏感内容。
+本群旨在AI工作交流，请勿发布无关广告、谣言或敏感内容。
 2️⃣ 发言规范
 ▫️ 文明交流，禁止人身攻击或歧视性言论；
 ▫️ 私聊需求请主动@好友，避免群内频繁@全体成员。
@@ -109,7 +109,7 @@ const loadSettingsFromLocalStorage = (): Settings | null => {
 const savedSettings = loadSettingsFromLocalStorage()
 
 const settingsDefault: Settings = {
-  groupName: 'AI技术交流群',
+  groupName: 'AI工作群',
   myName: '我',
   saveMessage: true,
   showNickname: true,

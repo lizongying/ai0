@@ -11,13 +11,11 @@
 
 ---
 
-  ![複製為Doc](./screenshots/img_2.png)
-
-  ![複製為Doc](./screenshots/img.png)
-
-  ![複製為Txt](./screenshots/img_1.png)
-
-  ![基本樣式](./screenshots/1.gif)
+![image](./screenshots/1.gif)
+![image](./screenshots/img_2.png)
+![image](./screenshots/img_3.png)
+![複製為Doc](./screenshots/img.png)
+![複製為Txt](./screenshots/img_1.png)
 
 ## 下載地址
 
