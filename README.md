@@ -9,14 +9,15 @@
 - 支持大模型返回數據自動保存到本地
 - 支持群組對話方式樣式，表現更有趣
 
-- 基本樣式
-  ![基本樣式](./screenshots/1.gif)
+---
 
-- 複製為Doc
+  ![複製為Doc](./screenshots/img_2.png)
+
   ![複製為Doc](./screenshots/img.png)
 
-- 複製為Txt
   ![複製為Txt](./screenshots/img_1.png)
+
+  ![基本樣式](./screenshots/1.gif)
 
 ## 下載地址
 
