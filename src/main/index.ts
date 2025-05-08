@@ -29,7 +29,7 @@ const createMe = (headless: boolean): BrowserWindow => {
     if (process.env.NODE_ENV === 'development') {
         win.loadURL('http://localhost:3000').then()
     } else {
-        win.loadFile(path.join(__dirname, '../renderer/index.html')).then()
+        win.loadFile(path.join(__dirname, '../home/index.html')).then()
     }
     // win.webContents.openDevTools()
     return win
@@ -63,7 +63,7 @@ const createDeepseek = (headless: boolean): BrowserWindow => {
         show: !headless,
         skipTaskbar: headless,
         webPreferences: {
-            preload: path.join(__dirname, '../preload/index.js'),
+            preload: path.join(__dirname, '../preload/deepseek.js'),
             nodeIntegration: false,
             contextIsolation: true,
             webSecurity: true,
@@ -74,7 +74,7 @@ const createDeepseek = (headless: boolean): BrowserWindow => {
 
     win.loadURL('https://chat.deepseek.com/').then(_ => {
         win.webContents
-            .executeJavaScript(readFileSync(join(__dirname, 'renderer_deepseek.js'), 'utf-8'))
+            .executeJavaScript(readFileSync(join(__dirname, '../renderer/deepseek.js'), 'utf-8'))
             .then()
     })
     // win.webContents.openDevTools()
@@ -89,7 +89,7 @@ const createDoubao = (headless: boolean): BrowserWindow => {
         show: !headless,
         skipTaskbar: headless,
         webPreferences: {
-            // preload: path.join(__dirname, '../preload/index.js'),
+            preload: path.join(__dirname, '../preload/doubao.js'),
             nodeIntegration: false,
             contextIsolation: true,
             webSecurity: true,
@@ -99,8 +99,11 @@ const createDoubao = (headless: boolean): BrowserWindow => {
     win.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36')
 
     win.loadURL('https://www.doubao.com/chat/').then(_ => {
+        win.webContents
+            .executeJavaScript(readFileSync(join(__dirname, '../renderer/doubao.js'), 'utf-8'))
+            .then()
     })
-    win.webContents.openDevTools()
+    // win.webContents.openDevTools()
     return win
 }
 
@@ -202,7 +205,7 @@ console.log('all window', me, deepseek, yiyan, doubao, kimi)
 console.log('all create', createMe, createDeepseek, createYiyan, createDoubao, createKimi)
 
 // registerWindow(yiyan, createYiyan)
-// registerWindow(doubao, createDoubao)
+registerWindow(doubao, createDoubao)
 // registerWindow(kimi, createKimi)
 registerWindow(deepseek, createDeepseek)
 registerWindow(me, createMe, () => {
@@ -216,6 +219,7 @@ registerWindow(me, createMe, () => {
 
 const openAll = () => {
     windows.get(deepseek)?.open(true)
+    windows.get(doubao)?.open(true)
     windows.get(me)?.open(false)
 }
 
@@ -236,7 +240,7 @@ app.whenReady().then(() => {
     })
 
     ipcMain.on('status', (_, message) => {
-        console.log('status', message)
+        windows.get(me)?.window?.webContents.send('status', message)
     })
 })
 

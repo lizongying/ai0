@@ -1,6 +1,6 @@
 const {ipcRenderer, contextBridge} = require('electron')
 import translations from '../i18n'
-import {Markdown} from '../renderer/markdown.ts'
+import {Markdown} from '../markdown.ts'
 
 let t = translations.hant
 
@@ -60,13 +60,17 @@ const observerButtons = () => {
     })
 }
 
+let ready = false
 const observerInput = () => {
     const observer = new MutationObserver((mutationsList) => {
         for (const mutation of mutationsList) {
             if (mutation.type === 'childList') {
                 const input = document.querySelector('#chat-input')
                 if (input) {
-                    ipcRenderer.send('status', {ready: 'deepseek'})
+                    if (!ready) {
+                        ipcRenderer.send('status', {from: 'deepseek', status: 'ready'})
+                        ready = true
+                    }
                     observer.disconnect()
                 }
             }

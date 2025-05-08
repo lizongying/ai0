@@ -1,14 +1,14 @@
 {
   "name": "ai0",
   "private": true,
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "vite --mode dev",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
-    "start": "vue-tsc -b --noEmit && vite build && electron .",
+    "start": "vue-tsc -b && vite build && electron .",
     "app:dir": "electron-builder --dir",
     "app:arm64": "npx electron-builder --mac --linux --arm64",
     "app:x64": "npx electron-builder --mac --linux --x64",

@@ -21,15 +21,31 @@ export default defineConfig({
                 },
             },
             {
-                entry: 'src/main/renderer_deepseek.ts', vite: {
+                entry: 'src/renderer/deepseek.ts', vite: {
                     build: {
-                        outDir: 'dist/main',
+                        outDir: 'dist/renderer',
                         sourcemap: true,
                     },
                 },
             },
             {
-                entry: 'src/preload/index.ts', vite: {
+                entry: 'src/renderer/doubao.ts', vite: {
+                    build: {
+                        outDir: 'dist/renderer',
+                        sourcemap: true,
+                    },
+                },
+            },
+            {
+                entry: 'src/preload/deepseek.ts', vite: {
+                    build: {
+                        outDir: 'dist/preload',
+                        sourcemap: true,
+                    },
+                },
+            },
+            {
+                entry: 'src/preload/doubao.ts', vite: {
                     build: {
                         outDir: 'dist/preload',
                         sourcemap: true,
@@ -57,18 +73,18 @@ export default defineConfig({
         alias: { '@': '/src' },
     },
     build: !process.argv.includes('dev') ? {
-        outDir: 'dist/renderer',
+        outDir: 'dist/home',
         sourcemap: true,
     } : {
         rollupOptions: {
             input: {
-                main: resolve(__dirname, 'src/renderer/index.js'),
+                main: resolve(__dirname, 'src/home/index.js'),
             },
             output: {
                 dir: 'dist',
                 entryFileNames: '[name].js',
             }
         },
-        outDir: 'dist/renderer',
+        outDir: 'dist/home',
     },
 });

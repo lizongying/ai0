@@ -142,7 +142,7 @@ const user: { [key: string]: User } = reactive({
     avatar: 'deepseek.png',
     link: 'https://chat.deepseek.com/',
     desc: 'Chat with DeepSeek AI – your intelligent assistant for coding, content creation, file reading, and more. Upload documents, engage in long-context conversations, and get expert help in AI, natural language processing, and beyond. | 深度求索（DeepSeek）助力编程代码开发、创意写作、文件处理等任务，支持文件上传及长文本对话，随时为您提供高效的AI支持。',
-    online: true,
+    online: false,
     me: false,
   },
   doubao: <User>{
@@ -270,6 +270,13 @@ onMounted(async () => {
       console.log('Received data:', data)
       await addMessage(data.data, user[data.from])
     })
+
+    window.electronAPI.onMessage('status', async (data: Data) => {
+      console.log('user status:', data)
+      if (user[data.from]) {
+        user[data.from].online = true
+      }
+    })
   }
 
   window.addEventListener('resize', handleResize)
@@ -349,6 +356,51 @@ const addMessage = async (content: string, user: User) => {
       } catch (error) {
         console.error('Failed to add message:', error)
       }
+    }
+  } else if (user.id === 'doubao') {
+    if (!content.startsWith('data: ')) {
+      return
+    }
+    try {
+      const d = JSON.parse(content.slice(6))
+      if (d?.event_id === '0') {
+        console.log(99999999999)
+        currentMessage = {
+          user: user,
+          content: '',
+          createTime: getTimestamp(),
+          finished: false,
+          render: 0,
+        }
+        messages.push(currentMessage)
+      }
+      if (d?.event_type === 2001) {
+        const event_data = JSON.parse(d?.event_data)
+        if (event_data?.message?.content_type === 2001) {
+          const text = JSON.parse(event_data?.message?.content)
+          console.log(1111, text?.text, event_data?.is_finish)
+
+          if (text?.text && currentMessage) {
+            currentMessage.content += text?.text
+            messages.push({} as any)
+            messages.pop()
+          }
+
+          if (event_data?.is_finish && currentMessage) {
+            currentMessage.finished = true
+            messages.push({} as any)
+            messages.pop()
+            const messageId = await dbManager?.addMessage({
+              userId: currentMessage.user.id,
+              title: currentMessage.title,
+              content: currentMessage.content,
+              createTime: currentMessage.createTime,
+            })
+            console.log('Added message with ID:', messageId)
+          }
+        }
+      }
+    } catch {
     }
   } else {
     const rs = parseText(content)
@@ -451,7 +503,6 @@ const selected = reactive<{ value: string }>({value: ''})
 
 const onSelect = (option: { value: string }) => {
   selected.value = option.value
-  console.log('select', selected)
 }
 
 const content = ref('')

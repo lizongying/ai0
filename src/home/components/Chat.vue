@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {computed, reactive, watch} from 'vue'
-import {Markdown} from '../markdown.ts'
+import {Markdown} from '../../markdown.ts'
 import {
   DeleteOutlined,
   DownloadOutlined,
