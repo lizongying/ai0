@@ -357,6 +357,49 @@ const addMessage = async (content: string, user: User) => {
         console.error('Failed to add message:', error)
       }
     }
+  } else if (user.id === 'kimi') {
+    if (!content.startsWith('data: ')) {
+      return
+    }
+    try {
+      for (const i of content.split('\n')) {
+        if (!i.trim()) {
+          continue
+        }
+        const d = JSON.parse(i.slice(6))
+        console.log('d?.event', d?.event)
+        if (d?.event === 'resp') {
+          currentMessage = {
+            user: user,
+            content: '',
+            createTime: getTimestamp(),
+            finished: false,
+            render: 0,
+          }
+          messages.push(currentMessage)
+        }
+        if (d?.event === 'all_done' && currentMessage) {
+          currentMessage.finished = true
+          messages.push({} as any)
+          messages.pop()
+          const messageId = await dbManager?.addMessage({
+            userId: currentMessage.user.id,
+            title: currentMessage.title,
+            content: currentMessage.content,
+            createTime: currentMessage.createTime,
+          })
+          console.log('Added message with ID:', messageId)
+        }
+        if (d?.event === 'cmpl') {
+          if (d?.text && currentMessage) {
+            currentMessage.content += d?.text
+            messages.push({} as any)
+            messages.pop()
+          }
+        }
+      }
+    } catch {
+    }
   } else if (user.id === 'doubao') {
     if (!content.startsWith('data: ')) {
       return
@@ -364,7 +407,6 @@ const addMessage = async (content: string, user: User) => {
     try {
       const d = JSON.parse(content.slice(6))
       if (d?.event_id === '0') {
-        console.log(99999999999)
         currentMessage = {
           user: user,
           content: '',

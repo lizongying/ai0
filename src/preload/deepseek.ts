@@ -6,14 +6,16 @@ let t = translations.hant
 
 const lineColor = 'currentColor'
 const fullColor = 'none'
+const user = 'deepseek'
+const inputSelector = '#chat-input'
 
 const chat = (msg: String) => {
-    ipcRenderer.send('chat', {from: 'deepseek', to: 'me', data: msg})
+    ipcRenderer.send('chat', {from: user, to: 'me', data: msg})
 }
 
 ipcRenderer.on('chat', (_: any, message: any) => {
     console.log('Received from chat:', message)
-    const input = document.querySelector('#chat-input') as HTMLTextAreaElement
+    const input = document.querySelector(inputSelector) as HTMLTextAreaElement
     input.focus()
     input.value = ''
     document.execCommand('insertText', false, message.content)
@@ -65,10 +67,10 @@ const observerInput = () => {
     const observer = new MutationObserver((mutationsList) => {
         for (const mutation of mutationsList) {
             if (mutation.type === 'childList') {
-                const input = document.querySelector('#chat-input')
+                const input = document.querySelector(inputSelector)
                 if (input) {
                     if (!ready) {
-                        ipcRenderer.send('status', {from: 'deepseek', status: 'ready'})
+                        ipcRenderer.send('status', {from: user, status: 'ready'})
                         ready = true
                     }
                     observer.disconnect()

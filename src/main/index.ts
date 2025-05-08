@@ -114,7 +114,7 @@ const createKimi = (headless: boolean): BrowserWindow => {
         show: !headless,
         skipTaskbar: headless,
         webPreferences: {
-            // preload: path.join(__dirname, '../preload/index.js'),
+            preload: path.join(__dirname, '../preload/kimi.js'),
             nodeIntegration: false,
             contextIsolation: true,
             webSecurity: true,
@@ -124,8 +124,11 @@ const createKimi = (headless: boolean): BrowserWindow => {
     win.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36')
 
     win.loadURL('https://kimi.moonshot.cn/chat/').then(_ => {
+        win.webContents
+            .executeJavaScript(readFileSync(join(__dirname, '../renderer/kimi.js'), 'utf-8'))
+            .then()
     })
-    win.webContents.openDevTools()
+    // win.webContents.openDevTools()
     return win
 }
 
@@ -206,7 +209,7 @@ console.log('all create', createMe, createDeepseek, createYiyan, createDoubao, c
 
 // registerWindow(yiyan, createYiyan)
 registerWindow(doubao, createDoubao)
-// registerWindow(kimi, createKimi)
+registerWindow(kimi, createKimi)
 registerWindow(deepseek, createDeepseek)
 registerWindow(me, createMe, () => {
     for (const [name, info] of windows.entries()) {
@@ -220,6 +223,7 @@ registerWindow(me, createMe, () => {
 const openAll = () => {
     windows.get(deepseek)?.open(true)
     windows.get(doubao)?.open(true)
+    windows.get(kimi)?.open(true)
     windows.get(me)?.open(false)
 }
 

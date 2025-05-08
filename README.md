@@ -21,6 +21,11 @@
 ![複製為Doc](./screenshots/img.png)
 ![複製為Txt](./screenshots/img_1.png)
 
+## 注意
+
+- 不支持多開。請只開啟一次本軟件，若已經存在開啟的本軟件，請關閉後再啟動
+- 有時大模型會要求驗證碼或者登陸，可以點擊頭像操作下，然後就可以了。建議登錄，一次登錄，基本長期有效。
+
 ## 下載地址
 
 [github](https://github.com/lizongying/ai0/releases)
@@ -32,6 +37,8 @@
 - 初始化提示詞
 - 歷史記錄搜索
 - 上傳圖片、文件
+
+- kimi (\boxed{9})
 
 ## 讚賞
 

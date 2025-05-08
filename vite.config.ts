@@ -39,6 +39,14 @@ export default defineConfig({
                 },
             },
             {
+                entry: 'src/renderer/kimi.ts', vite: {
+                    build: {
+                        outDir: 'dist/renderer',
+                        sourcemap: true,
+                    },
+                },
+            },
+            {
                 entry: 'src/preload/deepseek.ts', vite: {
                     build: {
                         outDir: 'dist/preload',
@@ -48,6 +56,14 @@ export default defineConfig({
             },
             {
                 entry: 'src/preload/doubao.ts', vite: {
+                    build: {
+                        outDir: 'dist/preload',
+                        sourcemap: true,
+                    },
+                },
+            },
+            {
+                entry: 'src/preload/kimi.ts', vite: {
                     build: {
                         outDir: 'dist/preload',
                         sourcemap: true,

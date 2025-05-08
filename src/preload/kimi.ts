@@ -6,8 +6,8 @@ let t = translations.hant
 
 const lineColor = 'currentColor'
 const fullColor = 'none'
-const user = 'doubao'
-const inputSelector = '[data-testid="chat_input_input"]'
+const user = 'kimi'
+const inputSelector = '.chat-input-editor'
 
 const chat = (msg: String) => {
     ipcRenderer.send('chat', {from: user, to: 'me', data: msg})
@@ -19,8 +19,10 @@ ipcRenderer.on('chat', (_: any, message: any) => {
     input.focus()
     input.value = ''
     document.execCommand('insertText', false, message.content)
-    const button = document.querySelector('#flow-end-msg-send');
-    (button as HTMLElement).click()
+    const button = document.querySelector('.send-button');
+    setTimeout(() => {
+        (button as HTMLElement).click()
+    }, 500)
 })
 
 contextBridge.exposeInMainWorld('electronAPI', {
