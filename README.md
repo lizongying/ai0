@@ -23,7 +23,8 @@
 
 ## 下載地址
 
-[releases](https://github.com/lizongying/ai0/releases)
+[github](https://github.com/lizongying/ai0/releases)
+[gitlink](https://www.gitlink.org.cn/lizongying/ai0/releases)
 
 ## 待完成
 
