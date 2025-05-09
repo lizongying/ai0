@@ -132,6 +132,31 @@ const createKimi = (headless: boolean): BrowserWindow => {
     return win
 }
 
+const createZhida = (headless: boolean): BrowserWindow => {
+    const win = new BrowserWindow({
+        width: 1000,
+        height: 600,
+        show: !headless,
+        skipTaskbar: headless,
+        webPreferences: {
+            preload: path.join(__dirname, '../preload/zhida.js'),
+            nodeIntegration: false,
+            contextIsolation: true,
+            webSecurity: true,
+        },
+    })
+
+    win.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36')
+
+    win.loadURL('https://zhida.zhihu.com/').then(_ => {
+        win.webContents
+            .executeJavaScript(readFileSync(join(__dirname, '../renderer/zhida.js'), 'utf-8'))
+            .then()
+    })
+    win.webContents.openDevTools()
+    return win
+}
+
 let canClose = false
 
 const registerWindow = (name: string, createFn: (headless: boolean) => BrowserWindow, closeFn?: (win: BrowserWindow) => void) => {
@@ -204,13 +229,15 @@ const deepseek = 'deepseek'
 const yiyan = 'yiyan'
 const doubao = 'doubao'
 const kimi = 'kimi'
-console.log('all window', me, deepseek, yiyan, doubao, kimi)
-console.log('all create', createMe, createDeepseek, createYiyan, createDoubao, createKimi)
+const zhida = 'zhida'
+console.log('all window', me, deepseek, yiyan, doubao, kimi, zhida)
+console.log('all create', createMe, createDeepseek, createYiyan, createDoubao, createKimi, createZhida)
 
 // registerWindow(yiyan, createYiyan)
 registerWindow(doubao, createDoubao)
 registerWindow(kimi, createKimi)
 registerWindow(deepseek, createDeepseek)
+// registerWindow(zhida, createZhida)
 registerWindow(me, createMe, () => {
     for (const [name, info] of windows.entries()) {
         if (name === me) {
@@ -221,6 +248,7 @@ registerWindow(me, createMe, () => {
 })
 
 const openAll = () => {
+    // windows.get(zhida)?.open(true)
     windows.get(deepseek)?.open(true)
     windows.get(doubao)?.open(true)
     windows.get(kimi)?.open(true)

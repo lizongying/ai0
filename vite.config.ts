@@ -22,63 +22,25 @@ export default defineConfig({
                     },
                 },
             },
-            {
-                entry: 'src/renderer/deepseek.ts', vite: {
+        ].concat(['deepseek', 'doubao', 'kimi', 'zhida'].map(i => {
+            return {
+                entry: `src/renderer/${i}.ts`, vite: {
                     build: {
                         outDir: 'dist/renderer',
                         sourcemap: true,
                     },
                 },
-            },
-            {
-                entry: 'src/renderer/doubao.ts', vite: {
-                    build: {
-                        outDir: 'dist/renderer',
-                        sourcemap: true,
-                    },
-                },
-            },
-            {
-                entry: 'src/renderer/kimi.ts', vite: {
-                    build: {
-                        outDir: 'dist/renderer',
-                        sourcemap: true,
-                    },
-                },
-            },
-            {
-                entry: 'src/preload/deepseek.ts', vite: {
-                    build: {
-                        outDir: 'dist/preload',
-                        sourcemap: true,
-                    },
-                },
-            },
-            {
-                entry: 'src/preload/doubao.ts', vite: {
-                    build: {
-                        outDir: 'dist/preload',
-                        sourcemap: true,
-                    },
-                },
-            },
-            {
-                entry: 'src/preload/kimi.ts', vite: {
-                    build: {
-                        outDir: 'dist/preload',
-                        sourcemap: true,
-                    },
-                },
-            },
-            {
-                entry: 'src/preload/me.ts', vite: {
+            }
+        })).concat(['deepseek', 'doubao', 'kimi', 'zhida', 'me'].map(i => {
+            return {
+                entry: `src/preload/${i}.ts`, vite: {
                     build: {
                         outDir: 'dist/preload',
                         sourcemap: true,
                     },
                 },
             }
-        ] : []),
+        })) : []),
         Components({
             resolvers: [
                 AntDesignVueResolver({

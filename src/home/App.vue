@@ -10,7 +10,7 @@ import {
   TranslationOutlined,
   UserOutlined
 } from '@ant-design/icons-vue'
-import {message, theme} from 'ant-design-vue'
+import {Mentions, message, theme} from 'ant-design-vue'
 
 import {computed, type CSSProperties, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue'
 import Chat from './components/Chat.vue'
@@ -261,6 +261,10 @@ let dbManager: DatabaseManager | null = null
 const pageSize = 10
 let offset = 0
 
+let isComposing = false
+
+const {getMentions} = Mentions
+
 onMounted(async () => {
   dbManager = new DatabaseManager()
   await dbManager.initialize()
@@ -280,6 +284,7 @@ onMounted(async () => {
   }
 
   window.addEventListener('resize', handleResize)
+  document.querySelector('textarea')?.addEventListener('keydown', handleKeydown)
 
   let rs = await dbManager.findMessages(pageSize, offset)
   console.log('rs', rs)
@@ -287,7 +292,7 @@ onMounted(async () => {
     for (const i of rs.reverse()) {
       const u = user[i.userId]
       if (u) {
-        currentMessage = {
+        const currentMessage = {
           user: u,
           title: i.title,
           content: i.content,
@@ -295,6 +300,7 @@ onMounted(async () => {
           finished: true,
           render: 0,
         }
+        messagesMap.set(u.id, currentMessage)
         messages.push(currentMessage)
       }
     }
@@ -304,45 +310,39 @@ onMounted(async () => {
     await scrollToBottom()
   }, 1000)
 
-  // window.addEventListener('keydown', handleKeydown)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
-  // window.removeEventListener('keydown', handleKeydown)
+  document.querySelector('textarea')?.removeEventListener('keydown', handleKeydown)
 })
 
-// const handleKeydown = (e: KeyboardEvent) => {
-//   if (inputFocus.value && e.code === 'Enter'
-//       && !content.value.endsWith('@')
-//       && !content.value.endsWith('@deepseek ')
-//       && !content.value.endsWith('@doubao ')
-//       && !content.value.endsWith('@kimi ')
-//       && !content.value.endsWith('@zhida ')
-//       && !content.value.endsWith('@tongyi ')
-//       && !content.value.endsWith('@hunyuan ')
-//       && !content.value.endsWith('@zhipu ')
-//       && !content.value.endsWith('@mita ')
-//       && !content.value.endsWith('@zhipuqingyan ')
-//   ) {
-//     e.preventDefault()
-//     sendMessage()
-//   }
-// }
+const handleKeydown = (e: KeyboardEvent) => {
+  if (inputFocus.value && e.code === 'Enter'
+      && !content.value.endsWith(`@${selected.value} `)
+      && !isComposing
+      && !e.isComposing
+  ) {
+    sendMessage()
+  }
+}
 
 const messages = reactive<Message[]>([])
 
-let currentMessage: Message | null = null
+// let currentMessage: Message | null = null
+
+const messagesMap = new Map<string, Message>()
 
 const addMessage = async (content: string, user: User) => {
   if (user.id === 'me') {
-    currentMessage = {
+    const currentMessage: Message = {
       user: user,
       content: content,
       createTime: getTimestamp(),
       finished: true,
       render: 0,
     }
+    // messagesMap.set(user.id, currentMessage)
     messages.push(currentMessage)
     if (settings.saveMessage) {
       try {
@@ -369,15 +369,17 @@ const addMessage = async (content: string, user: User) => {
         const d = JSON.parse(i.slice(6))
         console.log('d?.event', d?.event)
         if (d?.event === 'resp') {
-          currentMessage = {
+          const currentMessage = {
             user: user,
             content: '',
             createTime: getTimestamp(),
             finished: false,
             render: 0,
           }
+          messagesMap.set(user.id, currentMessage)
           messages.push(currentMessage)
         }
+        const currentMessage = messagesMap.get(user.id)
         if (d?.event === 'all_done' && currentMessage) {
           currentMessage.finished = true
           messages.push({} as any)
@@ -407,15 +409,17 @@ const addMessage = async (content: string, user: User) => {
     try {
       const d = JSON.parse(content.slice(6))
       if (d?.event_id === '0') {
-        currentMessage = {
+        const currentMessage = {
           user: user,
           content: '',
           createTime: getTimestamp(),
           finished: false,
           render: 0,
         }
+        messagesMap.set(user.id, currentMessage)
         messages.push(currentMessage)
       }
+      const currentMessage = messagesMap.get(user.id)
       if (d?.event_type === 2001) {
         const event_data = JSON.parse(d?.event_data)
         if (event_data?.message?.content_type === 2001) {
@@ -449,15 +453,16 @@ const addMessage = async (content: string, user: User) => {
 
     for (const r of rs) {
       // console.log('r', r)
-
+      const currentMessage = messagesMap.get(user.id)
       if (r.event === 'ready') {
-        currentMessage = {
+        const currentMessage = {
           user: user,
           content: '',
           createTime: getTimestamp(),
           finished: false,
           render: 0,
         }
+        messagesMap.set(user.id, currentMessage)
         messages.push(currentMessage)
       } else if (r.event === 'finish') {
         if (currentMessage) {
@@ -551,27 +556,22 @@ const content = ref('')
 
 const scrollContainer = ref<HTMLDivElement | null>(null)
 
-const regex = /@\w+/g
-const extractMentions = (text: string) => {
-  const mentions = text.match(regex)
-  return mentions || []
-}
-
 const sendMessage = async () => {
   const text = content.value.trim()
   if (!text) {
     return
   }
+
+  let mentions: any = []
   if (window.electronAPI) {
-    const mentions = extractMentions(text)
-    mentions.forEach(i => {
-      console.log('mentions', i.slice(1))
-      window.electronAPI.sendMessage('chat', {from: 'me', to: i.slice(1), content: text})
+    mentions = getMentions(text)
+    mentions.forEach((i: any) => {
+      window.electronAPI.sendMessage('chat', {from: 'me', to: i.value, content: text})
     })
   }
 
   await addMessage(text, user.me)
-  content.value = selected.value ? `@${selected.value} ` : ''
+  content.value = mentions.length > 0 ? mentions.map((i: any) => `@${i.value}`).join(' ') + ' ' : ''
 }
 
 const scrollToBottom = async () => {
@@ -648,6 +648,14 @@ const newChat = async (id: string) => {
 const inputFocus = ref(true)
 const inputFocusChange = (focus: boolean) => {
   inputFocus.value = focus
+}
+
+const handleCompositionStart = () => {
+  isComposing = true
+}
+
+const handleCompositionEnd = () => {
+  isComposing = false
 }
 
 </script>
@@ -755,6 +763,8 @@ const inputFocusChange = (focus: boolean) => {
                 @blur="inputFocusChange(false)"
                 @focus="inputFocusChange(true)"
                 @select="onSelect"
+                @compositionstart="handleCompositionStart"
+                @compositionend="handleCompositionEnd"
             ></a-mentions>
             <a-flex justify="flex-end" align="flex-end" class="send">
               <a-space size="small">

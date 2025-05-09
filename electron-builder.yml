@@ -7,14 +7,14 @@ publish: null
 
 win:
   target: nsis
-  icon: public/app.ico
+  icon: assets/app.ico
 
 linux:
   target: deb
   maintainer: Li ZongYing <lizongying@msn.com>
-  icon: public/icons/
+  icon: assets/icons/
 
 mac:
   target: dmg
   category: public.app-category.productivity
-  icon: public/app.icns
+  icon: assets/app.icns
