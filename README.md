@@ -9,6 +9,8 @@
 - 支持大模型返回數據自動保存到本地
 - 支持群組對話方式樣式，表現更有趣
 
+---
+
 [github](https://github.com/lizongying/ai0/)
 
 [gitlink](https://www.gitlink.org.cn/lizongying/ai0/)
@@ -30,6 +32,10 @@
 
 [github](https://github.com/lizongying/ai0/releases)
 [gitlink](https://www.gitlink.org.cn/lizongying/ai0/releases)
+
+## 更新日志
+
+[更新日志](./HISTORY.md)
 
 ## 待完成
 

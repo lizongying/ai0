@@ -12,7 +12,18 @@ import {
 } from '@ant-design/icons-vue'
 import {Mentions, message, theme} from 'ant-design-vue'
 
-import {computed, type CSSProperties, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue'
+import {
+  computed,
+  type CSSProperties,
+  h,
+  nextTick,
+  onBeforeMount,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch
+} from 'vue'
 import Chat from './components/Chat.vue'
 import {getImageUrl, getTimestamp, parseText} from './utils.ts'
 import translations from '../i18n'
@@ -163,15 +174,6 @@ const user: { [key: string]: User } = reactive({
     online: false,
     me: false,
   },
-  zhida: <User>{
-    id: 'zhida',
-    name: '知乎直達',
-    avatar: 'zhida.png',
-    link: 'https://zhida.zhihu.com/',
-    desc: '知乎直答（zhida.ai）是知乎推出的一款使用 AI 大模型等先进技术的产品，以知乎社区的优质内容为核心，多种数据源为辅助，为人们提供一种全新的获取可靠信息的途径。知乎直答是多智能体系统，能够满足用户多维度的需求；同时对生成结果进行溯源，以确保内容的可信、可控以及对知识产权和版权的尊重。知乎直答致力于为用户提供卓越的使用体验，用技术拉近创作者和用户之间的距离。有问题，就会有答案。',
-    online: false,
-    me: false,
-  },
   tongyi: <User>{
     id: 'tongyi',
     name: '通义',
@@ -217,6 +219,15 @@ const user: { [key: string]: User } = reactive({
     online: false,
     me: false,
   },
+  zhida: <User>{
+    id: 'zhida',
+    name: '知乎直達',
+    avatar: 'zhida.png',
+    link: 'https://zhida.zhihu.com/',
+    desc: '知乎直答（zhida.ai）是知乎推出的一款使用 AI 大模型等先进技术的产品，以知乎社区的优质内容为核心，多种数据源为辅助，为人们提供一种全新的获取可靠信息的途径。知乎直答是多智能体系统，能够满足用户多维度的需求；同时对生成结果进行溯源，以确保内容的可信、可控以及对知识产权和版权的尊重。知乎直答致力于为用户提供卓越的使用体验，用技术拉近创作者和用户之间的距离。有问题，就会有答案。',
+    online: false,
+    me: false,
+  },
   yiyan: <User>{
     id: 'yiyan',
     name: '文心一言',
@@ -241,12 +252,12 @@ const users: User[] = reactive([
   user.deepseek,
   user.doubao,
   user.kimi,
-  user.zhida,
   user.tongyi,
   user.hunyuan,
   user.zhipu,
   user.mita,
   user.zhipuqingyan,
+  user.zhida,
   user.me,
 ])
 
@@ -265,6 +276,15 @@ let isComposing = false
 
 const {getMentions} = Mentions
 
+onBeforeMount(async () => {
+  window.electronAPI?.onMessage('status', async (data: Data) => {
+    console.log('user status:', data)
+    if (user[data.from]) {
+      user[data.from].online = true
+    }
+  })
+})
+
 onMounted(async () => {
   dbManager = new DatabaseManager()
   await dbManager.initialize()
@@ -274,20 +294,17 @@ onMounted(async () => {
       console.log('Received data:', data)
       await addMessage(data.data, user[data.from])
     })
+  }
 
-    window.electronAPI.onMessage('status', async (data: Data) => {
-      console.log('user status:', data)
-      if (user[data.from]) {
-        user[data.from].online = true
-      }
-    })
+  if (window.electronAPI) {
+    window.electronAPI.sendMessage('status', {from: 'me', status: 'ready'})
   }
 
   window.addEventListener('resize', handleResize)
   document.querySelector('textarea')?.addEventListener('keydown', handleKeydown)
 
   let rs = await dbManager.findMessages(pageSize, offset)
-  console.log('rs', rs)
+  // console.log('rs', rs)
   if (rs) {
     for (const i of rs.reverse()) {
       const u = user[i.userId]
@@ -356,6 +373,102 @@ const addMessage = async (content: string, user: User) => {
       } catch (error) {
         console.error('Failed to add message:', error)
       }
+    }
+  } else if (user.id === 'hunyuan') {
+    let t = content.trim().split('\n\n')
+    try {
+      for (const i of t) {
+        if (!i.trim()) {
+          continue
+        }
+        if (!i.startsWith('data: ')) {
+          continue
+        }
+        const d = JSON.parse(i.slice(6))
+        console.log('d', d)
+        if (d?.model_response?.type === 1) {
+          const currentMessage = {
+            user: user,
+            content: '',
+            createTime: getTimestamp(),
+            finished: false,
+            render: 0,
+          }
+          messagesMap.set(user.id, currentMessage)
+          messages.push(currentMessage)
+        }
+        const currentMessage = messagesMap.get(user.id)
+        const arr = d?.choices
+        if (Array.isArray(arr) && arr.length > 0) {
+          if (arr[0].finish_reason === 'stop' && currentMessage) {
+            currentMessage.finished = true
+            messages.push({} as any)
+            messages.pop()
+            const messageId = await dbManager?.addMessage({
+              userId: currentMessage.user.id,
+              title: currentMessage.title,
+              content: currentMessage.content,
+              createTime: currentMessage.createTime,
+            })
+            console.log('Added message with ID:', messageId)
+          }
+          const c = arr[0]?.delta?.content
+          if (c && currentMessage) {
+            currentMessage.content += c
+            messages.push({} as any)
+            messages.pop()
+          }
+        }
+      }
+    } catch {
+    }
+  } else if (user.id === 'tongyi') {
+    if (!content.startsWith('data: ')) {
+      return
+    }
+    try {
+      for (const i of content.split('\n')) {
+        if (!i.trim()) {
+          continue
+        }
+        const d = JSON.parse(i.slice(6))
+        console.log('d?.pkgId', d?.pkgId)
+        if (d?.pkgId === 0) {
+          const currentMessage = {
+            user: user,
+            content: '',
+            createTime: getTimestamp(),
+            finished: false,
+            render: 0,
+          }
+          messagesMap.set(user.id, currentMessage)
+          messages.push(currentMessage)
+        }
+        const currentMessage = messagesMap.get(user.id)
+        if (d?.stopReason === 'stop' && currentMessage) {
+          currentMessage.finished = true
+          messages.push({} as any)
+          messages.pop()
+          const messageId = await dbManager?.addMessage({
+            userId: currentMessage.user.id,
+            title: currentMessage.title,
+            content: currentMessage.content,
+            createTime: currentMessage.createTime,
+          })
+          console.log('Added message with ID:', messageId)
+        }
+        const contents = d?.contents
+        if (Array.isArray(contents) && contents.length > 0) {
+          for (const ii of contents) {
+            if (ii?.content && currentMessage) {
+              currentMessage.content = ii?.content
+              messages.push({} as any)
+              messages.pop()
+            }
+          }
+        }
+      }
+    } catch {
     }
   } else if (user.id === 'kimi') {
     if (!content.startsWith('data: ')) {
@@ -564,10 +677,18 @@ const sendMessage = async () => {
 
   let mentions: any = []
   if (window.electronAPI) {
-    mentions = getMentions(text)
-    mentions.forEach((i: any) => {
-      window.electronAPI.sendMessage('chat', {from: 'me', to: i.value, content: text})
-    })
+    mentions = [...new Set(getMentions(text))]
+    console.log('mentions', mentions)
+    if (mentions.map((i: any) => i.value).includes('all')) {
+      console.log('all', users.filter(i => i !== user.me && i.online))
+      users.filter(i => i !== user.me && i.online).forEach((i: any) => {
+        window.electronAPI.sendMessage('chat', {from: 'me', to: i.id, content: text})
+      })
+    } else {
+      mentions.forEach((i: any) => {
+        window.electronAPI.sendMessage('chat', {from: 'me', to: i.value, content: text})
+      })
+    }
   }
 
   await addMessage(text, user.me)

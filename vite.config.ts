@@ -22,25 +22,34 @@ export default defineConfig({
                     },
                 },
             },
-        ].concat(['deepseek', 'doubao', 'kimi', 'zhida'].map(i => {
-            return {
-                entry: `src/renderer/${i}.ts`, vite: {
-                    build: {
-                        outDir: 'dist/renderer',
-                        sourcemap: true,
-                    },
-                },
-            }
-        })).concat(['deepseek', 'doubao', 'kimi', 'zhida', 'me'].map(i => {
-            return {
-                entry: `src/preload/${i}.ts`, vite: {
+            {
+                entry: `src/preload/me.ts`, vite: {
                     build: {
                         outDir: 'dist/preload',
                         sourcemap: true,
                     },
                 },
-            }
-        })) : []),
+            },
+        ].concat(['deepseek', 'doubao', 'kimi', 'zhida', 'tongyi', 'hunyuan'].map(i => {
+            return [
+                {
+                    entry: `src/preload/${i}.ts`, vite: {
+                        build: {
+                            outDir: 'dist/preload',
+                            sourcemap: true,
+                        },
+                    },
+                },
+                {
+                    entry: `src/renderer/${i}.ts`, vite: {
+                        build: {
+                            outDir: 'dist/renderer',
+                            sourcemap: true,
+                        },
+                    },
+                }
+            ]
+        }).flat()) : []),
         Components({
             resolvers: [
                 AntDesignVueResolver({

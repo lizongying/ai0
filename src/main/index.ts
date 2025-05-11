@@ -35,35 +35,14 @@ const createMe = (headless: boolean): BrowserWindow => {
     return win
 }
 
-const createYiyan = (headless: boolean) => {
+const create = (name: string, url: string, headless: boolean) => {
     const win = new BrowserWindow({
         width: 1000,
         height: 600,
         show: !headless,
         skipTaskbar: headless,
         webPreferences: {
-            preload: path.join(__dirname, '../preload/index.js'),
-            nodeIntegration: false,
-            contextIsolation: false,
-            webSecurity: true,
-        },
-    })
-
-    win.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36')
-
-    win.loadURL('https://yiyan.baidu.com/').then()
-    // mainWindow.webContents.openDevTools()
-    return win
-}
-
-const createDeepseek = (headless: boolean): BrowserWindow => {
-    const win = new BrowserWindow({
-        width: 1000,
-        height: 600,
-        show: !headless,
-        skipTaskbar: headless,
-        webPreferences: {
-            preload: path.join(__dirname, '../preload/deepseek.js'),
+            preload: path.join(__dirname, `../preload/${name}.js`),
             nodeIntegration: false,
             contextIsolation: true,
             webSecurity: true,
@@ -72,94 +51,18 @@ const createDeepseek = (headless: boolean): BrowserWindow => {
 
     win.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36')
 
-    win.loadURL('https://chat.deepseek.com/').then(_ => {
+    win.loadURL(url).then(() => {
         win.webContents
-            .executeJavaScript(readFileSync(join(__dirname, '../renderer/deepseek.js'), 'utf-8'))
+            .executeJavaScript(readFileSync(join(__dirname, `../renderer/${name}.js`), 'utf-8'))
             .then()
     })
     // win.webContents.openDevTools()
-    return win
-}
-
-
-const createDoubao = (headless: boolean): BrowserWindow => {
-    const win = new BrowserWindow({
-        width: 1000,
-        height: 600,
-        show: !headless,
-        skipTaskbar: headless,
-        webPreferences: {
-            preload: path.join(__dirname, '../preload/doubao.js'),
-            nodeIntegration: false,
-            contextIsolation: true,
-            webSecurity: true,
-        },
-    })
-
-    win.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36')
-
-    win.loadURL('https://www.doubao.com/chat/').then(_ => {
-        win.webContents
-            .executeJavaScript(readFileSync(join(__dirname, '../renderer/doubao.js'), 'utf-8'))
-            .then()
-    })
-    // win.webContents.openDevTools()
-    return win
-}
-
-const createKimi = (headless: boolean): BrowserWindow => {
-    const win = new BrowserWindow({
-        width: 1000,
-        height: 600,
-        show: !headless,
-        skipTaskbar: headless,
-        webPreferences: {
-            preload: path.join(__dirname, '../preload/kimi.js'),
-            nodeIntegration: false,
-            contextIsolation: true,
-            webSecurity: true,
-        },
-    })
-
-    win.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36')
-
-    win.loadURL('https://kimi.moonshot.cn/chat/').then(_ => {
-        win.webContents
-            .executeJavaScript(readFileSync(join(__dirname, '../renderer/kimi.js'), 'utf-8'))
-            .then()
-    })
-    // win.webContents.openDevTools()
-    return win
-}
-
-const createZhida = (headless: boolean): BrowserWindow => {
-    const win = new BrowserWindow({
-        width: 1000,
-        height: 600,
-        show: !headless,
-        skipTaskbar: headless,
-        webPreferences: {
-            preload: path.join(__dirname, '../preload/zhida.js'),
-            nodeIntegration: false,
-            contextIsolation: true,
-            webSecurity: true,
-        },
-    })
-
-    win.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36')
-
-    win.loadURL('https://zhida.zhihu.com/').then(_ => {
-        win.webContents
-            .executeJavaScript(readFileSync(join(__dirname, '../renderer/zhida.js'), 'utf-8'))
-            .then()
-    })
-    win.webContents.openDevTools()
     return win
 }
 
 let canClose = false
 
-const registerWindow = (name: string, createFn: (headless: boolean) => BrowserWindow, closeFn?: (win: BrowserWindow) => void) => {
+const registerWindow = (name: string, url: string, closeFn?: (win: BrowserWindow) => void) => {
     const openManager = (headless: boolean) => {
         const existing = windows.get(name)
         if (existing?.window && !existing.window.isDestroyed()) {
@@ -175,7 +78,7 @@ const registerWindow = (name: string, createFn: (headless: boolean) => BrowserWi
             return
         }
 
-        const window = createFn(headless)
+        const window = name === me ? createMe(headless) : create(name, url, headless)
         windows.set(name, {
             open: openManager,
             close: () => {
@@ -230,15 +133,18 @@ const yiyan = 'yiyan'
 const doubao = 'doubao'
 const kimi = 'kimi'
 const zhida = 'zhida'
+const tongyi = 'tongyi'
+const hunyuan = 'hunyuan'
 console.log('all window', me, deepseek, yiyan, doubao, kimi, zhida)
-console.log('all create', createMe, createDeepseek, createYiyan, createDoubao, createKimi, createZhida)
 
-// registerWindow(yiyan, createYiyan)
-registerWindow(doubao, createDoubao)
-registerWindow(kimi, createKimi)
-registerWindow(deepseek, createDeepseek)
-// registerWindow(zhida, createZhida)
-registerWindow(me, createMe, () => {
+// registerWindow(yiyan, 'https://yiyan.baidu.com/')
+registerWindow(doubao, 'https://www.doubao.com/chat/')
+registerWindow(kimi, 'https://kimi.moonshot.cn/chat/')
+registerWindow(deepseek, 'https://chat.deepseek.com/')
+// registerWindow(zhida, 'https://zhida.zhihu.com/')
+registerWindow(tongyi, 'https://www.tongyi.com/qianwen/')
+registerWindow(hunyuan, 'https://llm.hunyuan.tencent.com/#/chat')
+registerWindow(me, '', () => {
     for (const [name, info] of windows.entries()) {
         if (name === me) {
             continue
@@ -248,11 +154,13 @@ registerWindow(me, createMe, () => {
 })
 
 const openAll = () => {
-    // windows.get(zhida)?.open(true)
+    windows.get(me)?.open(false)
     windows.get(deepseek)?.open(true)
     windows.get(doubao)?.open(true)
     windows.get(kimi)?.open(true)
-    windows.get(me)?.open(false)
+    windows.get(tongyi)?.open(true)
+    windows.get(hunyuan)?.open(true)
+    // windows.get(zhida)?.open(true)
 }
 
 app.whenReady().then(() => {
