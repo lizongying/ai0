@@ -28,6 +28,7 @@ declare global {
         finished: boolean
         render: number
         html?: string
+        suggest?: string[]
     }
 
     interface MessageStore {
@@ -40,6 +41,10 @@ declare global {
 
     interface Window {
         electronAPI: {
+            sendMessage: (channel: string, data: any) => void
+            onMessage: (channel: string, callback: (...args: any[]) => void) => void
+        }
+        API: {
             sendMessage: (channel: string, data: any) => void
             onMessage: (channel: string, callback: (...args: any[]) => void) => void
         }

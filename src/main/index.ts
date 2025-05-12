@@ -3,6 +3,9 @@ import path from 'path'
 import {fileURLToPath} from 'url'
 import {join} from 'node:path'
 import {readFileSync} from 'node:fs'
+import {ASSISTANTS, USER} from '../constants'
+
+const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN} = ASSISTANTS
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -45,6 +48,7 @@ const create = (name: string, url: string, headless: boolean) => {
             preload: path.join(__dirname, `../preload/${name}.js`),
             nodeIntegration: false,
             contextIsolation: true,
+            sandbox: true,
             webSecurity: true,
         },
     })
@@ -78,7 +82,7 @@ const registerWindow = (name: string, url: string, closeFn?: (win: BrowserWindow
             return
         }
 
-        const window = name === me ? createMe(headless) : create(name, url, headless)
+        const window = name === USER ? createMe(headless) : create(name, url, headless)
         windows.set(name, {
             open: openManager,
             close: () => {
@@ -90,7 +94,7 @@ const registerWindow = (name: string, url: string, closeFn?: (win: BrowserWindow
         })
 
         window.on('close', (event) => {
-            if (name === me) {
+            if (name === USER) {
                 canClose = true
             }
             if (!canClose) {
@@ -127,40 +131,37 @@ const registerWindow = (name: string, url: string, closeFn?: (win: BrowserWindow
     })
 }
 
-const me = 'me'
-const deepseek = 'deepseek'
-const yiyan = 'yiyan'
-const doubao = 'doubao'
-const kimi = 'kimi'
-const zhida = 'zhida'
-const tongyi = 'tongyi'
-const hunyuan = 'hunyuan'
-console.log('all window', me, deepseek, yiyan, doubao, kimi, zhida)
-
-// registerWindow(yiyan, 'https://yiyan.baidu.com/')
-registerWindow(doubao, 'https://www.doubao.com/chat/')
-registerWindow(kimi, 'https://kimi.moonshot.cn/chat/')
-registerWindow(deepseek, 'https://chat.deepseek.com/')
-// registerWindow(zhida, 'https://zhida.zhihu.com/')
-registerWindow(tongyi, 'https://www.tongyi.com/qianwen/')
-registerWindow(hunyuan, 'https://llm.hunyuan.tencent.com/#/chat')
-registerWindow(me, '', () => {
+registerWindow(USER, '', () => {
     for (const [name, info] of windows.entries()) {
-        if (name === me) {
+        if (name === USER) {
             continue
         }
         info.close()
     }
 })
+registerWindow(DEEPSEEK.id, DEEPSEEK.link)
+registerWindow(DOUBAO.id, DOUBAO.link)
+registerWindow(KIMI.id, KIMI.link)
+registerWindow(TONGYI.id, TONGYI.link)
+registerWindow(HUNYUAN.id, HUNYUAN.link)
+registerWindow(ZHIPU.id, ZHIPU.link)
+registerWindow(MITA.id, MITA.link)
+registerWindow(QINGYAN.id, QINGYAN.link)
+// registerWindow(YIYAN.id, YIYAN.link)
+// registerWindow(ZHIDA.id, ZHIDA.link)
 
 const openAll = () => {
-    windows.get(me)?.open(false)
-    windows.get(deepseek)?.open(true)
-    windows.get(doubao)?.open(true)
-    windows.get(kimi)?.open(true)
-    windows.get(tongyi)?.open(true)
-    windows.get(hunyuan)?.open(true)
-    // windows.get(zhida)?.open(true)
+    windows.get(USER)?.open(false)
+    windows.get(DEEPSEEK.id)?.open(true)
+    windows.get(DOUBAO.id)?.open(true)
+    windows.get(KIMI.id)?.open(true)
+    windows.get(TONGYI.id)?.open(true)
+    windows.get(HUNYUAN.id)?.open(true)
+    windows.get(ZHIPU.id)?.open(true)
+    // windows.get(MITA.id)?.open(true)
+    // windows.get(QINGYAN.id)?.open(true)
+    // windows.get(YIYAN)?.open(true)
+    // windows.get(ZHIDA)?.open(true)
 }
 
 app.whenReady().then(() => {
@@ -176,11 +177,10 @@ app.whenReady().then(() => {
 
     ipcMain.on('close', (_, message) => {
         windows.get(message.to)?.open(true)
-        // windows.get(message.to)?.close()
     })
 
     ipcMain.on('status', (_, message) => {
-        windows.get(me)?.window?.webContents.send('status', message)
+        windows.get(USER)?.window?.webContents.send('status', message)
     })
 })
 

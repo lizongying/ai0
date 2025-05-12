@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, reactive, watch} from 'vue'
+import {computed, defineEmits, reactive, watch} from 'vue'
 import {Markdown} from '../../markdown.ts'
 import {
   DeleteOutlined,
@@ -54,6 +54,12 @@ watch(() => props.messages, async (newMessages) => {
             if (msg.finished) {
               m.finished = msg.finished
             }
+            if (msg.suggest) {
+              // m.suggest = msg.suggest
+              m.suggest = [...msg.suggest]
+              console.log('m.suggest', m.suggest)
+            }
+            // m.suggest=['1','2', '3']
             return m
           }
 
@@ -128,6 +134,12 @@ const copyAsMd = async (md: string) => {
   await navigator.clipboard.writeText(md)
 }
 
+const emit = defineEmits(['suggest'])
+
+const suggest = (content: string) => {
+  emit('suggest', content)
+}
+
 </script>
 
 <template>
@@ -151,6 +163,11 @@ const copyAsMd = async (md: string) => {
             v-html="message.html"
         >
         </div>
+        <a-space direction="vertical" class="options" v-if="message.suggest">
+          <a-typography-text underline class="link" v-for="(item, index) in message.suggest"
+                             :key="index" @click="suggest(item)">{{ item }}
+          </a-typography-text>
+        </a-space>
         <a-space size="small" class="options" v-if="message.finished">
           <a-tooltip>
             <template #title>{{ t.delete }}</template>
@@ -290,5 +307,9 @@ const copyAsMd = async (md: string) => {
 
 .speech-bubble :deep(p:last-child) {
   margin-bottom: 0;
+}
+
+.link {
+  cursor: pointer;
 }
 </style>

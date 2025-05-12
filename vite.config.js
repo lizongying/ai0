@@ -28,7 +28,7 @@ export default defineConfig({
                     },
                 },
             },
-        ].concat(['deepseek', 'doubao', 'kimi', 'zhida', 'tongyi', 'hunyuan'].map(i => {
+        ].concat(['deepseek', 'doubao', 'kimi', 'zhida', 'tongyi', 'hunyuan', 'zhipu', 'mita', 'qingyan'].map(i => {
             return [
                 {
                     entry: `src/preload/${i}.ts`, vite: {

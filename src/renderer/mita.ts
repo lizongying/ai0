@@ -1,3 +1,8 @@
+import {ASSISTANTS, USER} from '../constants'
+
+const {MITA} = ASSISTANTS
+
+const user = MITA.id
 const hookRequest = () => {
     const originalFetch = window.fetch
     window.fetch = new Proxy(originalFetch, {
@@ -6,7 +11,7 @@ const hookRequest = () => {
                 const response = Reflect.apply(target, thisArg, argumentsList)
                 return response.then(async (response: Response) => {
                     const clonedResponse = response.clone()
-                    if (clonedResponse.url.includes('completion/stream')||clonedResponse.url.includes('chat/recommend-prompt')) {
+                    if (clonedResponse.url.includes('triton_image/hunyuan_text_chat')) {
                         console.log('Response intercepted:', clonedResponse.url)
 
                         const reader = clonedResponse.body?.getReader()
@@ -21,8 +26,8 @@ const hookRequest = () => {
                                 console.log('Received chunk:', chunk)
 
                                 window.electronAPI.sendMessage('chat', {
-                                    from: 'kimi',
-                                    to: 'me',
+                                    from: user,
+                                    to: USER,
                                     data: chunk,
                                 });
                             }

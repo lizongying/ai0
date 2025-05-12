@@ -29,6 +29,10 @@ import {getImageUrl, getTimestamp, parseText} from './utils.ts'
 import translations from '../i18n'
 import {DatabaseManager} from './db.ts'
 
+import {ASSISTANTS, USER} from '../constants'
+
+const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN, ZHIDA, YIYAN} = ASSISTANTS
+
 
 enum Lang {
   Hant = '漢字',
@@ -57,17 +61,15 @@ const showDrawer = () => {
 
 const ellipsis = ref(true)
 
-const groupNotify = ref(`亲爱的群成员们：
-大家好！为营造高效、友好的交流环境，现就群内规则提醒如下，请仔细阅读：
-1️⃣ 群功能定位
-本群旨在AI工作交流，请勿发布无关广告、谣言或敏感内容。
-2️⃣ 发言规范
-▫️ 文明交流，禁止人身攻击或歧视性言论；
-▫️ 私聊需求请主动@好友，避免群内频繁@全体成员。
-4️⃣ 问题反馈
-如遇技术问题或疑问，请联系管理员 https://github.com/lizongying/ai0/
-感谢大家的配合与支持！让我们共同维护一个有价值的社群空间～
-—— 群管理团队`)
+const groupNotify = ref(`親愛的群成員們：
+大家好！幾位重量級AI已經加入了本群，等待你的指令：
+1️⃣ 如何使用
+你可以在本群安排AI為你工作，你可以@某人，或@全體。
+2️⃣ 注意事項
+▫️ 不支持多開。請只開啟一次本軟件，若存在已經開啟的本軟件，請關閉後再重新啟動。
+▫️ 如果沒有輸出，請點擊頭像打開官網窗口進行檢查，有時AI會要求驗證碼或者登陸。建議登錄後使用。
+3️⃣ 問題反饋
+如有相關問題或功能建議，請訪問 https://github.com/lizongying/ai0/`)
 
 const lines = computed(() => groupNotify.value.split('\n'))
 const lineMax = 5
@@ -148,97 +150,97 @@ watch(
 
 const user: { [key: string]: User } = reactive({
   deepseek: <User>{
-    id: 'deepseek',
+    id: DEEPSEEK.id,
     name: 'DeepSeek',
     avatar: 'deepseek.png',
-    link: 'https://chat.deepseek.com/',
+    link: DEEPSEEK.link,
     desc: 'Chat with DeepSeek AI – your intelligent assistant for coding, content creation, file reading, and more. Upload documents, engage in long-context conversations, and get expert help in AI, natural language processing, and beyond. | 深度求索（DeepSeek）助力编程代码开发、创意写作、文件处理等任务，支持文件上传及长文本对话，随时为您提供高效的AI支持。',
     online: false,
     me: false,
   },
   doubao: <User>{
-    id: 'doubao',
+    id: DOUBAO.id,
     name: '豆包',
     avatar: 'doubao.png',
-    link: 'https://www.doubao.com/chat/',
+    link: DOUBAO.link,
     desc: '豆包是你的 AI 聊天智能对话问答助手，写作文案翻译编程全能工具。豆包为你答疑解惑，提供灵感，辅助创作，也可以和你畅聊任何你感兴趣的话题。',
     online: false,
     me: false,
   },
   kimi: <User>{
-    id: 'kimi',
+    id: KIMI.id,
     name: 'Kimi',
     avatar: 'kimi.png',
-    link: 'https://kimi.moonshot.cn/chat/',
+    link: KIMI.link,
     desc: 'Kimi是一款学生和职场人的新质生产力工具。帮你解读论文，写代码查BUG，策划方案，创作小说，多语言翻译。有问题问Kimi，一键解决你的所有难题',
     online: false,
     me: false,
   },
   tongyi: <User>{
-    id: 'tongyi',
+    id: TONGYI.id,
     name: '通义',
     avatar: 'tongyi.png',
-    link: 'https://www.tongyi.com/qianwen/',
+    link: TONGYI.link,
     desc: '通义是一个通情、达义的国产AI模型，可以帮你解答问题、文档阅读、联网搜索并写作总结，最多支持1000万字的文档速读。通义_你的全能AI助手',
     online: false,
     me: false,
   },
   hunyuan: <User>{
-    id: 'hunyuan',
+    id: HUNYUAN.id,
     name: '騰訊混元',
     avatar: 'hunyuan.png',
-    link: 'https://llm.hunyuan.tencent.com/#/chat',
+    link: HUNYUAN.link,
     desc: '腾讯混元大模型是由腾讯研发的大语言模型，具备跨领域知识和自然语言理解能力，实现基于人机自然语言对话的方式，理解用户指令并执行任务，帮助用户实现人获取信息，知识和灵感。',
     online: false,
     me: false,
   },
   zhipu: <User>{
-    id: 'zhipu',
+    id: ZHIPU.id,
     name: '智普',
     avatar: 'zhipu.png',
-    link: 'https://chat.z.ai/',
+    link: ZHIPU.link,
     desc: 'Z Chat is an advanced AI assistant developed by Z.ai. Built on open-source GLM models, it supports text generation, reasoning, and deep research - making it a powerful and free AI chatbot tailored for both English and Chinese users.',
     online: false,
     me: false,
   },
   mita: <User>{
-    id: 'mita',
+    id: MITA.id,
     name: '秘塔AI搜索',
     avatar: 'mita.png',
-    link: 'https://metaso.cn/',
+    link: MITA.link,
     desc: '秘塔AI搜索，没有广告，直达结果',
     online: false,
     me: false,
   },
-  zhipuqingyan: <User>{
-    id: 'zhipuqingyan',
+  qingyan: <User>{
+    id: QINGYAN.id,
     name: '智譜清言',
-    avatar: 'zhipuqingyan.png',
-    link: 'https://chatglm.cn/main/alltoolsdetail?lang=zh',
+    avatar: 'qingyan.png',
+    link: QINGYAN.link,
     desc: '中国版对话语言模型，与GLM大模型进行对话。',
     online: false,
     me: false,
   },
   zhida: <User>{
-    id: 'zhida',
+    id: ZHIDA.id,
     name: '知乎直達',
     avatar: 'zhida.png',
-    link: 'https://zhida.zhihu.com/',
+    link: ZHIDA.link,
     desc: '知乎直答（zhida.ai）是知乎推出的一款使用 AI 大模型等先进技术的产品，以知乎社区的优质内容为核心，多种数据源为辅助，为人们提供一种全新的获取可靠信息的途径。知乎直答是多智能体系统，能够满足用户多维度的需求；同时对生成结果进行溯源，以确保内容的可信、可控以及对知识产权和版权的尊重。知乎直答致力于为用户提供卓越的使用体验，用技术拉近创作者和用户之间的距离。有问题，就会有答案。',
     online: false,
     me: false,
   },
   yiyan: <User>{
-    id: 'yiyan',
+    id: YIYAN.id,
     name: '文心一言',
     avatar: 'yiyan.png',
-    link: 'https://yiyan.baidu.com/',
+    link: YIYAN.link,
     desc: '文心一言既是你的智能伙伴，可以陪你聊天、回答问题、画图识图；也是你的AI助手，可以提供灵感、撰写文案、阅读文档、智能翻译，帮你高效完成工作和学习任务。',
     online: false,
     me: false,
   },
   me: <User>{
-    id: 'me',
+    id: USER,
     name: computed(() => settings.myName),
     avatar: computed(() => settings.avatar || ''),
     link: 'https://github.com/lizongying/ai0/',
@@ -256,7 +258,7 @@ const users: User[] = reactive([
   user.hunyuan,
   user.zhipu,
   user.mita,
-  user.zhipuqingyan,
+  user.qingyan,
   user.zhida,
   user.me,
 ])
@@ -351,7 +353,7 @@ const messages = reactive<Message[]>([])
 const messagesMap = new Map<string, Message>()
 
 const addMessage = async (content: string, user: User) => {
-  if (user.id === 'me') {
+  if (user.id === USER) {
     const currentMessage: Message = {
       user: user,
       content: content,
@@ -374,7 +376,127 @@ const addMessage = async (content: string, user: User) => {
         console.error('Failed to add message:', error)
       }
     }
-  } else if (user.id === 'hunyuan') {
+  } else if (user.id === QINGYAN.id) {
+    if (content === 'NEW') {
+      const currentMessage = {
+        user: user,
+        content: '',
+        createTime: getTimestamp(),
+        finished: false,
+        render: 0,
+      }
+      messagesMap.set(user.id, currentMessage)
+      messages.push(currentMessage)
+      return
+    }
+
+    let t = content.trim().split('\n\n')
+    try {
+      for (const i of t) {
+        if (!i.trim()) {
+          continue
+        }
+        if (!i.startsWith('data: ')) {
+          continue
+        }
+        const d = JSON.parse(i.slice(6))
+        console.log('d', d)
+
+        const currentMessage = messagesMap.get(user.id)
+
+        if (d?.data?.parts?.done === true && currentMessage) {
+          currentMessage.finished = true
+          messages.push({} as any)
+          messages.pop()
+          const messageId = await dbManager?.addMessage({
+            userId: currentMessage.user.id,
+            title: currentMessage.title,
+            content: currentMessage.content,
+            createTime: currentMessage.createTime,
+          })
+          console.log('Added message with ID:', messageId)
+        }
+
+
+        const arr = d?.parts
+        if (Array.isArray(arr) && arr.length > 0) {
+          if (arr[0].status === 'finish' && currentMessage) {
+            currentMessage.finished = true
+            messages.push({} as any)
+            messages.pop()
+            const messageId = await dbManager?.addMessage({
+              userId: currentMessage.user.id,
+              title: currentMessage.title,
+              content: currentMessage.content,
+              createTime: currentMessage.createTime,
+            })
+            console.log('Added message with ID:', messageId)
+          }
+
+          const ca = arr[0]?.content
+          if (Array.isArray(ca) && ca.length > 0) {
+            const c = ca[0]?.text
+            if (c && currentMessage) {
+              currentMessage.content += c
+              messages.push({} as any)
+              messages.pop()
+            }
+          }
+        }
+      }
+    } catch {
+    }
+  } else if (user.id === ZHIPU.id) {
+    if (content === 'NEW') {
+      const currentMessage = {
+        user: user,
+        content: '',
+        createTime: getTimestamp(),
+        finished: false,
+        render: 0,
+      }
+      messagesMap.set(user.id, currentMessage)
+      messages.push(currentMessage)
+      return
+    }
+
+    let t = content.trim().split('\n\n')
+    try {
+      for (const i of t) {
+        if (!i.trim()) {
+          continue
+        }
+        if (!i.startsWith('data: ')) {
+          continue
+        }
+        const d = JSON.parse(i.slice(6))
+        console.log('d', d)
+
+        const currentMessage = messagesMap.get(user.id)
+
+        if (d?.data?.data?.done === true && currentMessage) {
+          currentMessage.finished = true
+          messages.push({} as any)
+          messages.pop()
+          const messageId = await dbManager?.addMessage({
+            userId: currentMessage.user.id,
+            title: currentMessage.title,
+            content: currentMessage.content,
+            createTime: currentMessage.createTime,
+          })
+          console.log('Added message with ID:', messageId)
+        }
+
+        const c = d?.data?.data?.content
+        if (c && currentMessage) {
+          currentMessage.content = c
+          messages.push({} as any)
+          messages.pop()
+        }
+      }
+    } catch {
+    }
+  } else if (user.id === HUNYUAN.id) {
     let t = content.trim().split('\n\n')
     try {
       for (const i of t) {
@@ -422,7 +544,7 @@ const addMessage = async (content: string, user: User) => {
       }
     } catch {
     }
-  } else if (user.id === 'tongyi') {
+  } else if (user.id === TONGYI.id) {
     if (!content.startsWith('data: ')) {
       return
     }
@@ -445,6 +567,18 @@ const addMessage = async (content: string, user: User) => {
           messages.push(currentMessage)
         }
         const currentMessage = messagesMap.get(user.id)
+
+        if (d?.chat_prompt && currentMessage) {
+          if (!currentMessage.suggest) {
+            currentMessage.suggest = []
+          }
+          currentMessage.suggest.push(d?.chat_prompt)
+          console.log('suggest', currentMessage.suggest)
+          messages.push({} as any)
+          messages.pop()
+          continue
+        }
+
         if (d?.stopReason === 'stop' && currentMessage) {
           currentMessage.finished = true
           messages.push({} as any)
@@ -460,7 +594,7 @@ const addMessage = async (content: string, user: User) => {
         const contents = d?.contents
         if (Array.isArray(contents) && contents.length > 0) {
           for (const ii of contents) {
-            if (ii?.content && currentMessage) {
+            if (ii?.content && ii?.contentType == 'text' && currentMessage) {
               currentMessage.content = ii?.content
               messages.push({} as any)
               messages.pop()
@@ -470,7 +604,7 @@ const addMessage = async (content: string, user: User) => {
       }
     } catch {
     }
-  } else if (user.id === 'kimi') {
+  } else if (user.id === KIMI.id) {
     if (!content.startsWith('data: ')) {
       return
     }
@@ -492,7 +626,21 @@ const addMessage = async (content: string, user: User) => {
           messagesMap.set(user.id, currentMessage)
           messages.push(currentMessage)
         }
+
         const currentMessage = messagesMap.get(user.id)
+
+        if (d?.event === 'chat_prompt') {
+          if (d?.text && currentMessage) {
+            if (!currentMessage.suggest) {
+              currentMessage.suggest = []
+            }
+            currentMessage.suggest.push(d?.text)
+            console.log('suggest', currentMessage.suggest)
+            messages.push({} as any)
+            messages.pop()
+          }
+        }
+
         if (d?.event === 'all_done' && currentMessage) {
           currentMessage.finished = true
           messages.push({} as any)
@@ -515,7 +663,7 @@ const addMessage = async (content: string, user: User) => {
       }
     } catch {
     }
-  } else if (user.id === 'doubao') {
+  } else if (user.id === DOUBAO.id) {
     if (!content.startsWith('data: ')) {
       return
     }
@@ -535,28 +683,40 @@ const addMessage = async (content: string, user: User) => {
       const currentMessage = messagesMap.get(user.id)
       if (d?.event_type === 2001) {
         const event_data = JSON.parse(d?.event_data)
-        if (event_data?.message?.content_type === 2001) {
-          const text = JSON.parse(event_data?.message?.content)
-          console.log(1111, text?.text, event_data?.is_finish)
+        const text = JSON.parse(event_data?.message?.content)
+        console.log(1111, text?.text, event_data?.is_finish, text?.suggest)
 
-          if (text?.text && currentMessage) {
-            currentMessage.content += text?.text
-            messages.push({} as any)
-            messages.pop()
-          }
+        if ('type' in text) {
+          return
+        }
 
-          if (event_data?.is_finish && currentMessage) {
-            currentMessage.finished = true
-            messages.push({} as any)
-            messages.pop()
-            const messageId = await dbManager?.addMessage({
-              userId: currentMessage.user.id,
-              title: currentMessage.title,
-              content: currentMessage.content,
-              createTime: currentMessage.createTime,
-            })
-            console.log('Added message with ID:', messageId)
+        if (text?.suggest && currentMessage) {
+          if (!currentMessage.suggest) {
+            currentMessage.suggest = []
           }
+          currentMessage.suggest.push(text?.suggest)
+          console.log('suggest', currentMessage.suggest)
+          messages.push({} as any)
+          messages.pop()
+        }
+
+        if (text?.text && currentMessage) {
+          currentMessage.content += text?.text
+          messages.push({} as any)
+          messages.pop()
+        }
+
+        if (event_data?.is_finish && currentMessage) {
+          currentMessage.finished = true
+          messages.push({} as any)
+          messages.pop()
+          const messageId = await dbManager?.addMessage({
+            userId: currentMessage.user.id,
+            title: currentMessage.title,
+            content: currentMessage.content,
+            createTime: currentMessage.createTime,
+          })
+          console.log('Added message with ID:', messageId)
         }
       }
     } catch {
@@ -669,13 +829,15 @@ const content = ref('')
 
 const scrollContainer = ref<HTMLDivElement | null>(null)
 
+let mentions: any = []
+
 const sendMessage = async () => {
   const text = content.value.trim()
   if (!text) {
     return
   }
 
-  let mentions: any = []
+  mentions = []
   if (window.electronAPI) {
     mentions = [...new Set(getMentions(text))]
     console.log('mentions', mentions)
@@ -779,6 +941,13 @@ const handleCompositionEnd = () => {
   isComposing = false
 }
 
+const handleSuggest = async (msg: string) => {
+  console.log('handleSuggest', msg)
+  const m = mentions.length > 0 ? mentions.map((i: any) => `@${i.value}`).join(' ') + ' ' : ''
+  content.value = `${m} ${msg}`
+  await sendMessage()
+}
+
 </script>
 
 <template>
@@ -868,7 +1037,7 @@ const handleCompositionEnd = () => {
         </a-layout-header>
         <a-layout-content :style="contentStyle">
           <div ref="scrollContainer" class="scrollContainer">
-            <Chat :messages="messages" :settings="settings"></Chat>
+            <Chat :messages="messages" :settings="settings" @suggest="handleSuggest"></Chat>
           </div>
         </a-layout-content>
         <a-layout-footer :style="footerStyle">

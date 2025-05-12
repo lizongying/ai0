@@ -8,7 +8,7 @@ on:
 env:
   RUN_PATH: .
   PACKAGE_NAME: ai0
-  PACKAGE_VERSION: 0.1.10
+  PACKAGE_VERSION: 0.1.11
 
 permissions:
   contents: write

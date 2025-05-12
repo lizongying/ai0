@@ -1,3 +1,9 @@
+import {ASSISTANTS, USER} from '../constants'
+
+const {ZHIPU} = ASSISTANTS
+
+const user = ZHIPU.id
+
 const hookRequest = () => {
     const originalFetch = window.fetch
     window.fetch = new Proxy(originalFetch, {
@@ -6,13 +12,18 @@ const hookRequest = () => {
                 const response = Reflect.apply(target, thisArg, argumentsList)
                 return response.then(async (response: Response) => {
                     const clonedResponse = response.clone()
-                    if (clonedResponse.url.includes('completion/stream')||clonedResponse.url.includes('chat/recommend-prompt')) {
+                    if (clonedResponse.url.includes('chat/completions')) {
                         console.log('Response intercepted:', clonedResponse.url)
 
                         const reader = clonedResponse.body?.getReader()
                         const decoder = new TextDecoder()
 
                         if (reader) {
+                            window.API.sendMessage('chat', {
+                                from: user,
+                                to: USER,
+                                data: 'NEW',
+                            })
                             while (true) {
                                 const {done, value} = await reader.read()
                                 if (done) break
@@ -20,9 +31,9 @@ const hookRequest = () => {
                                 const chunk = decoder.decode(value, {stream: true})
                                 console.log('Received chunk:', chunk)
 
-                                window.electronAPI.sendMessage('chat', {
-                                    from: 'kimi',
-                                    to: 'me',
+                                window.API.sendMessage('chat', {
+                                    from: user,
+                                    to: USER,
                                     data: chunk,
                                 });
                             }
@@ -39,4 +50,3 @@ const hookRequest = () => {
 }
 
 hookRequest()
-console.log('hookRequest')
