@@ -18,7 +18,7 @@
 ---
 
 ![image](./screenshots/1.gif)
-![image](./screenshots/img_2.png)
+![image](./screenshots/img_4.png)
 ![image](./screenshots/img_3.png)
 ![複製為Doc](./screenshots/img.png)
 ![複製為Txt](./screenshots/img_1.png)
@@ -31,6 +31,7 @@
 ## 下載地址
 
 [github](https://github.com/lizongying/ai0/releases)
+
 [gitlink](https://www.gitlink.org.cn/lizongying/ai0/releases)
 
 ## 更新日志
@@ -43,10 +44,12 @@
 - 初始化提示詞
 - 歷史記錄搜索
 - 上傳圖片、文件
+- 刪除歷史記錄
+- 增加引用
+- 超時等錯誤處理
 
 - kimi (\boxed{9})
 - kimi [^10^]
-- 通义 世界有多大
 
 ## 讚賞
 

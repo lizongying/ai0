@@ -18,7 +18,6 @@ declare global {
         me: boolean
     }
 
-    // TODO a lock for updated?
     interface Message {
         user: User
         title?: string
@@ -29,6 +28,8 @@ declare global {
         render: number
         html?: string
         suggest?: string[]
+        thinking?: string
+        thinkingStatus?: int
     }
 
     interface MessageStore {

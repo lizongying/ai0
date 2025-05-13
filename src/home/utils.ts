@@ -28,7 +28,6 @@ const parseText = (text: string): Result[] => {
                     result = {}
                 }
                 const dataStr = line.slice(line.indexOf(':') + 2)
-                // console.log('line:', line, 'dataStr:', dataStr)
                 try {
                     result.data = JSON.parse(dataStr)
                 } catch (e) {

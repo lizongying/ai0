@@ -8,7 +8,7 @@ on:
 env:
   RUN_PATH: .
   PACKAGE_NAME: ai0
-  PACKAGE_VERSION: 0.1.11
+  PACKAGE_VERSION: 0.1.12
 
 permissions:
   contents: write
@@ -22,6 +22,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get History
+        id: get_history
+        run: |
+          chmod +x history.sh
+          output=$(./history.sh)
+          echo "$output" > history.md
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -32,6 +39,7 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
+          body_path: history.md
 
   macos:
     runs-on: macos-latest

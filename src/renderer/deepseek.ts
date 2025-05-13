@@ -1,3 +1,8 @@
+import {ASSISTANTS, USER} from '../constants'
+
+const {DEEPSEEK} = ASSISTANTS
+const user = DEEPSEEK.id
+
 const hookRequest = () => {
     const originalOpen = window.XMLHttpRequest.prototype.open
     window.XMLHttpRequest.prototype.open = new Proxy(originalOpen, {
@@ -21,8 +26,8 @@ const hookRequest = () => {
                         const data = thisArg.responseText.slice(thisArg.lastDataIndex || 0)
                         thisArg.lastDataIndex = thisArg.responseText.length
                         window.electronAPI.sendMessage('chat', {
-                            from: 'deepseek',
-                            to: 'me',
+                            from: user,
+                            to: USER,
                             data: data,
                         })
                     }
@@ -34,4 +39,3 @@ const hookRequest = () => {
 }
 
 hookRequest()
-console.log('hookRequest')

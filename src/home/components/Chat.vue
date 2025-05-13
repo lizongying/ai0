@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, defineEmits, reactive, watch} from 'vue'
+import {computed, defineEmits, reactive, ref, watch} from 'vue'
 import {Markdown} from '../../markdown.ts'
 import {
   DeleteOutlined,
@@ -45,34 +45,33 @@ watch(() => props.messages, async (newMessages) => {
   try {
     const processed = await Promise.all(
         newMessages.map(async (msg, index) => {
-          const m = messages[index]
-          // console.log(index, 'msg.content.length', msg.content.length, 'm.render', m?.render, 'msg.content', msg.content)
-          if (m && m.render >= msg.content.length && m.content === msg.content) {
-            if (msg.title) {
-              m.title = msg.title
-            }
-            if (msg.finished) {
-              m.finished = msg.finished
-            }
-            if (msg.suggest) {
-              // m.suggest = msg.suggest
-              m.suggest = [...msg.suggest]
-              console.log('m.suggest', m.suggest)
-            }
-            // m.suggest=['1','2', '3']
-            return m
-          }
-
-          const html = await mdHighlight.render(msg.content)
-
           if (msg.content) {
+            const m = messages[index]
+            if (m && m.render >= msg.content.length && m.content === msg.content) {
+              if (msg.title) {
+                m.title = msg.title
+              }
+              if (msg.finished) {
+                m.finished = msg.finished
+              }
+              if (msg.suggest) {
+                // m.suggest = msg.suggest
+                m.suggest = [...msg.suggest]
+              }
+              return m
+            }
+
             return {
               ...msg,
               render: msg.content.length,
-              html: `<div style="padding:10px">${html}<div>`,
+              html: await mdHighlight.render(msg.content),
             }
           } else {
-            return msg
+            return {
+              ...msg,
+              thinking: msg.thinking,
+              thinkingStatus: msg.thinkingStatus,
+            }
           }
         })
     )
@@ -140,6 +139,8 @@ const suggest = (content: string) => {
   emit('suggest', content)
 }
 
+const activeKey = ref(['1'])
+
 </script>
 
 <template>
@@ -160,8 +161,16 @@ const suggest = (content: string) => {
         </div>
         <div
             class="speech-bubble"
-            v-html="message.html"
+            style="padding:10px"
         >
+          <a-collapse v-model:activeKey="activeKey" ghost v-if="message.thinking">
+            <a-collapse-panel key="1" :header="message.thinkingStatus===1 ? '思考中...' : '已深度思考'">
+              <a-typography-text type="secondary">
+                <pre class="thinking">{{ message.thinking }}</pre>
+              </a-typography-text>
+            </a-collapse-panel>
+          </a-collapse>
+          <div v-html="message.html"></div>
         </div>
         <a-space direction="vertical" class="options" v-if="message.suggest">
           <a-typography-text underline class="link" v-for="(item, index) in message.suggest"
@@ -311,5 +320,16 @@ const suggest = (content: string) => {
 
 .link {
   cursor: pointer;
+}
+
+.thinking {
+  font-family: inherit;
+  font-size: 1em;
+
+  margin: 0;
+  padding: 0;
+
+  background: none;
+  border: none;
 }
 </style>

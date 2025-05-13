@@ -250,18 +250,7 @@ const user: { [key: string]: User } = reactive({
   },
 })
 
-const users: User[] = reactive([
-  user.deepseek,
-  user.doubao,
-  user.kimi,
-  user.tongyi,
-  user.hunyuan,
-  user.zhipu,
-  user.mita,
-  user.qingyan,
-  user.zhida,
-  user.me,
-])
+const users: User[] = reactive(Object.values(ASSISTANTS).filter(v => v.enable).map(v => user[v.id]).concat([user.me]))
 
 interface Data {
   from: string
@@ -271,7 +260,7 @@ interface Data {
 
 let dbManager: DatabaseManager | null = null
 
-const pageSize = 10
+const pageSize = 50
 let offset = 0
 
 let isComposing = false
@@ -280,7 +269,7 @@ const {getMentions} = Mentions
 
 onBeforeMount(async () => {
   window.electronAPI?.onMessage('status', async (data: Data) => {
-    console.log('user status:', data)
+    console.log('status data:', data)
     if (user[data.from]) {
       user[data.from].online = true
     }
@@ -293,7 +282,7 @@ onMounted(async () => {
 
   if (window.electronAPI) {
     window.electronAPI.onMessage('chat', async (data: Data) => {
-      console.log('Received data:', data)
+      // console.log('chat data:', data)
       await addMessage(data.data, user[data.from])
     })
   }
@@ -376,6 +365,56 @@ const addMessage = async (content: string, user: User) => {
         console.error('Failed to add message:', error)
       }
     }
+  } else if (user.id === MITA.id) {
+    if (content === 'NEW') {
+      const currentMessage = {
+        user: user,
+        content: '',
+        createTime: getTimestamp(),
+        finished: false,
+        render: 0,
+      }
+      messagesMap.set(user.id, currentMessage)
+      messages.push(currentMessage)
+      return
+    }
+
+    if (content === '[DONE]') {
+      const currentMessage = messagesMap.get(user.id)
+      if (currentMessage) {
+        currentMessage.finished = true
+        messages.push({} as any)
+        messages.pop()
+        const messageId = await dbManager?.addMessage({
+          userId: currentMessage.user.id,
+          title: currentMessage.title,
+          content: currentMessage.content,
+          createTime: currentMessage.createTime,
+        })
+        console.log('Added message with ID:', messageId)
+      }
+      return
+    }
+
+    let t = content.trim().split('\n\n')
+    try {
+      for (const i of t) {
+        if (!i.trim()) {
+          continue
+        }
+        const d = JSON.parse(i)
+        console.log('d', d)
+
+        const currentMessage = messagesMap.get(user.id)
+
+        if (d?.text && currentMessage) {
+          currentMessage.content += d?.text
+          messages.push({} as any)
+          messages.pop()
+        }
+      }
+    } catch {
+    }
   } else if (user.id === QINGYAN.id) {
     if (content === 'NEW') {
       const currentMessage = {
@@ -454,6 +493,7 @@ const addMessage = async (content: string, user: User) => {
         createTime: getTimestamp(),
         finished: false,
         render: 0,
+        thinking: '',
       }
       messagesMap.set(user.id, currentMessage)
       messages.push(currentMessage)
@@ -470,7 +510,6 @@ const addMessage = async (content: string, user: User) => {
           continue
         }
         const d = JSON.parse(i.slice(6))
-        console.log('d', d)
 
         const currentMessage = messagesMap.get(user.id)
 
@@ -489,7 +528,34 @@ const addMessage = async (content: string, user: User) => {
 
         const c = d?.data?.data?.content
         if (c && currentMessage) {
-          currentMessage.content = c
+          if (c.startsWith('<details')) {
+            let index = c.indexOf('</details>')
+            if (index > -1) {
+              const regex = /<summary>([^<]+?)<\/summary>/m
+              const result = c.slice(0, index).match(regex)
+              if (result) {
+                const thinking = c.slice(result.index + result[0].length, index).split('\n').map((s: string) => s.replace(/^>\s/, '')).join('\n').trim()
+                if (thinking && currentMessage && thinking != currentMessage.thinking) {
+                  currentMessage.thinkingStatus = 1
+                  currentMessage.thinking = thinking
+                  messages.push({} as any)
+                  messages.pop()
+                }
+              }
+
+              const c0 = c.slice(index + 10)
+              if (c0.length > 0) {
+                currentMessage.thinkingStatus = 2
+                currentMessage.content = c.slice(index + 10)
+              }
+            } else {
+              currentMessage.content = ''
+            }
+          } else {
+            currentMessage.thinkingStatus = 2
+            currentMessage.content = c
+          }
+
           messages.push({} as any)
           messages.pop()
         }
@@ -503,23 +569,39 @@ const addMessage = async (content: string, user: User) => {
         if (!i.trim()) {
           continue
         }
-        if (!i.startsWith('data: ')) {
-          continue
-        }
-        const d = JSON.parse(i.slice(6))
-        console.log('d', d)
-        if (d?.model_response?.type === 1) {
+        if (i === 'NEW') {
           const currentMessage = {
             user: user,
             content: '',
             createTime: getTimestamp(),
             finished: false,
             render: 0,
+            thinking: '',
           }
           messagesMap.set(user.id, currentMessage)
           messages.push(currentMessage)
+          continue
         }
+        if (!i.startsWith('data: ')) {
+          continue
+        }
+        const d = JSON.parse(i.slice(6))
+        console.log('d', d)
         const currentMessage = messagesMap.get(user.id)
+        if (d?.model_response?.type === 1 && currentMessage) {
+          currentMessage.thinkingStatus = 1
+          messages.push({} as any)
+          messages.pop()
+          continue
+        }
+
+        if (d?.model_response?.type === 3 && currentMessage) {
+          currentMessage.thinkingStatus = 2
+          messages.push({} as any)
+          messages.pop()
+          continue
+        }
+
         const arr = d?.choices
         if (Array.isArray(arr) && arr.length > 0) {
           if (arr[0].finish_reason === 'stop' && currentMessage) {
@@ -533,6 +615,12 @@ const addMessage = async (content: string, user: User) => {
               createTime: currentMessage.createTime,
             })
             console.log('Added message with ID:', messageId)
+          }
+          const thinking = arr[0]?.delta?.reasoning_content
+          if (thinking && currentMessage) {
+            currentMessage.thinking += thinking
+            messages.push({} as any)
+            messages.pop()
           }
           const c = arr[0]?.delta?.content
           if (c && currentMessage) {
@@ -562,6 +650,7 @@ const addMessage = async (content: string, user: User) => {
             createTime: getTimestamp(),
             finished: false,
             render: 0,
+            thinking: '',
           }
           messagesMap.set(user.id, currentMessage)
           messages.push(currentMessage)
@@ -594,10 +683,33 @@ const addMessage = async (content: string, user: User) => {
         const contents = d?.contents
         if (Array.isArray(contents) && contents.length > 0) {
           for (const ii of contents) {
-            if (ii?.content && ii?.contentType == 'text' && currentMessage) {
-              currentMessage.content = ii?.content
+            if (ii?.content && ii?.contentType === 'think' && ii?.status === 'finished' && currentMessage) {
+              currentMessage.thinkingStatus = 2
               messages.push({} as any)
               messages.pop()
+              continue
+            }
+
+            if (ii?.content && ii?.contentType === 'think' && currentMessage) {
+              currentMessage.thinkingStatus = 1
+              currentMessage.thinking += JSON.parse(ii?.content).content
+              messages.push({} as any)
+              messages.pop()
+              continue
+            }
+
+            if (ii?.content && ii?.contentType === 'text' && currentMessage) {
+              if (ii?.incremental == true) {
+                if (ii?.status !== 'finished') {
+                  currentMessage.content += ii?.content
+                  messages.push({} as any)
+                  messages.pop()
+                }
+              } else {
+                currentMessage.content = ii?.content
+                messages.push({} as any)
+                messages.pop()
+              }
             }
           }
         }
@@ -605,16 +717,15 @@ const addMessage = async (content: string, user: User) => {
     } catch {
     }
   } else if (user.id === KIMI.id) {
-    if (!content.startsWith('data: ')) {
-      return
-    }
     try {
       for (const i of content.split('\n')) {
         if (!i.trim()) {
           continue
         }
+        if (!i.startsWith('data: ')) {
+          continue
+        }
         const d = JSON.parse(i.slice(6))
-        console.log('d?.event', d?.event)
         if (d?.event === 'resp') {
           const currentMessage = {
             user: user,
@@ -622,6 +733,7 @@ const addMessage = async (content: string, user: User) => {
             createTime: getTimestamp(),
             finished: false,
             render: 0,
+            thinking: '',
           }
           messagesMap.set(user.id, currentMessage)
           messages.push(currentMessage)
@@ -635,7 +747,6 @@ const addMessage = async (content: string, user: User) => {
               currentMessage.suggest = []
             }
             currentMessage.suggest.push(d?.text)
-            console.log('suggest', currentMessage.suggest)
             messages.push({} as any)
             messages.pop()
           }
@@ -653,8 +764,18 @@ const addMessage = async (content: string, user: User) => {
           })
           console.log('Added message with ID:', messageId)
         }
+        if (d?.event === 'k1') {
+          if (d?.text && currentMessage) {
+            currentMessage.thinkingStatus = 1
+            currentMessage.thinking += d?.text
+            messages.push({} as any)
+            messages.pop()
+          }
+          continue
+        }
         if (d?.event === 'cmpl') {
           if (d?.text && currentMessage) {
+            currentMessage.thinkingStatus = 2
             currentMessage.content += d?.text
             messages.push({} as any)
             messages.pop()
@@ -664,68 +785,81 @@ const addMessage = async (content: string, user: User) => {
     } catch {
     }
   } else if (user.id === DOUBAO.id) {
-    if (!content.startsWith('data: ')) {
-      return
-    }
     try {
-      const d = JSON.parse(content.slice(6))
-      if (d?.event_id === '0') {
-        const currentMessage = {
-          user: user,
-          content: '',
-          createTime: getTimestamp(),
-          finished: false,
-          render: 0,
+      for (const i of content.split('\n')) {
+        if (!i.trim()) {
+          continue
         }
-        messagesMap.set(user.id, currentMessage)
-        messages.push(currentMessage)
-      }
-      const currentMessage = messagesMap.get(user.id)
-      if (d?.event_type === 2001) {
-        const event_data = JSON.parse(d?.event_data)
-        const text = JSON.parse(event_data?.message?.content)
-        console.log(1111, text?.text, event_data?.is_finish, text?.suggest)
-
-        if ('type' in text) {
-          return
+        if (!i.startsWith('data: ')) {
+          continue
         }
-
-        if (text?.suggest && currentMessage) {
-          if (!currentMessage.suggest) {
-            currentMessage.suggest = []
+        const d = JSON.parse(i.slice(6))
+        if (d?.event_id === '0') {
+          const currentMessage = {
+            user: user,
+            content: '',
+            createTime: getTimestamp(),
+            finished: false,
+            render: 0,
+            thinking: '',
           }
-          currentMessage.suggest.push(text?.suggest)
-          console.log('suggest', currentMessage.suggest)
-          messages.push({} as any)
-          messages.pop()
+          messagesMap.set(user.id, currentMessage)
+          messages.push(currentMessage)
         }
+        const currentMessage = messagesMap.get(user.id)
+        if (d?.event_type === 2001) {
+          const event_data = JSON.parse(d?.event_data)
+          const text = JSON.parse(event_data?.message?.content)
+          console.log('content', text)
 
-        if (text?.text && currentMessage) {
-          currentMessage.content += text?.text
-          messages.push({} as any)
-          messages.pop()
-        }
+          if (text?.think && currentMessage) {
+            currentMessage.thinkingStatus = 1
+            currentMessage.thinking += text?.think
+            messages.push({} as any)
+            messages.pop()
+            continue
+          }
 
-        if (event_data?.is_finish && currentMessage) {
-          currentMessage.finished = true
-          messages.push({} as any)
-          messages.pop()
-          const messageId = await dbManager?.addMessage({
-            userId: currentMessage.user.id,
-            title: currentMessage.title,
-            content: currentMessage.content,
-            createTime: currentMessage.createTime,
-          })
-          console.log('Added message with ID:', messageId)
+          if ('type' in text) {
+            continue
+          }
+
+          if (text?.suggest && currentMessage) {
+            if (!currentMessage.suggest) {
+              currentMessage.suggest = []
+            }
+            currentMessage.suggest.push(text?.suggest)
+            console.log('suggest', currentMessage.suggest)
+            messages.push({} as any)
+            messages.pop()
+          }
+
+          if (text?.text && currentMessage) {
+            currentMessage.thinkingStatus = 2
+            currentMessage.content += text?.text
+            messages.push({} as any)
+            messages.pop()
+          }
+
+          if (event_data?.is_finish && currentMessage) {
+            currentMessage.finished = true
+            messages.push({} as any)
+            messages.pop()
+            const messageId = await dbManager?.addMessage({
+              userId: currentMessage.user.id,
+              title: currentMessage.title,
+              content: currentMessage.content,
+              createTime: currentMessage.createTime,
+            })
+            console.log('Added message with ID:', messageId)
+          }
         }
       }
     } catch {
     }
   } else {
     const rs = parseText(content)
-
     for (const r of rs) {
-      // console.log('r', r)
       const currentMessage = messagesMap.get(user.id)
       if (r.event === 'ready') {
         const currentMessage = {
@@ -734,6 +868,7 @@ const addMessage = async (content: string, user: User) => {
           createTime: getTimestamp(),
           finished: false,
           render: 0,
+          thinking: '',
         }
         messagesMap.set(user.id, currentMessage)
         messages.push(currentMessage)
@@ -753,7 +888,6 @@ const addMessage = async (content: string, user: User) => {
         if (r.data && 'content' in r.data) {
           if (currentMessage) {
             currentMessage.title = r.data.content
-            console.log('title', currentMessage.title)
             messages.push({} as any)
             messages.pop()
           }
@@ -775,10 +909,21 @@ const addMessage = async (content: string, user: User) => {
       } else if (!r.event && (r.data && 'p' in r.data)) {
         if (r.data.p === 'response/content') {
           if (currentMessage) {
+            currentMessage.thinkingStatus = 2
             currentMessage.content += r.data?.v
             messages.push({} as any)
             messages.pop()
-            // console.log('messages', messages)
+          }
+        }
+        if (r.data.p === 'response/thinking_content') {
+          if (currentMessage) {
+            if (!currentMessage.thinking) {
+              currentMessage.thinking = ''
+            }
+            currentMessage.thinkingStatus = 1
+            currentMessage.thinking += r.data?.v
+            messages.push({} as any)
+            messages.pop()
           }
         } else {
           if (Array.isArray(r.data?.v)) {
@@ -794,10 +939,13 @@ const addMessage = async (content: string, user: User) => {
       } else {
         if (r.data?.v && typeof r.data?.v === 'string') {
           if (currentMessage) {
-            currentMessage.content += r.data?.v
+            if (currentMessage.thinkingStatus === 2) {
+              currentMessage.content += r.data?.v
+            } else {
+              currentMessage.thinking += r.data?.v
+            }
             messages.push({} as any)
             messages.pop()
-            // console.log('messages', messages)
           }
         }
       }

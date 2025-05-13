@@ -12,6 +12,8 @@ declare module 'vue' {
     AAvatar: typeof import('ant-design-vue/es')['Avatar']
     ABadge: typeof import('ant-design-vue/es')['Badge']
     AButton: typeof import('ant-design-vue/es')['Button']
+    ACollapse: typeof import('ant-design-vue/es')['Collapse']
+    ACollapsePanel: typeof import('ant-design-vue/es')['CollapsePanel']
     AConfigProvider: typeof import('ant-design-vue/es')['ConfigProvider']
     ADivider: typeof import('ant-design-vue/es')['Divider']
     ADrawer: typeof import('ant-design-vue/es')['Drawer']

@@ -5,8 +5,6 @@ import {join} from 'node:path'
 import {readFileSync} from 'node:fs'
 import {ASSISTANTS, USER} from '../constants'
 
-const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN} = ASSISTANTS
-
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -139,29 +137,21 @@ registerWindow(USER, '', () => {
         info.close()
     }
 })
-registerWindow(DEEPSEEK.id, DEEPSEEK.link)
-registerWindow(DOUBAO.id, DOUBAO.link)
-registerWindow(KIMI.id, KIMI.link)
-registerWindow(TONGYI.id, TONGYI.link)
-registerWindow(HUNYUAN.id, HUNYUAN.link)
-registerWindow(ZHIPU.id, ZHIPU.link)
-registerWindow(MITA.id, MITA.link)
-registerWindow(QINGYAN.id, QINGYAN.link)
-// registerWindow(YIYAN.id, YIYAN.link)
-// registerWindow(ZHIDA.id, ZHIDA.link)
+
+Object.values(ASSISTANTS).forEach(v => {
+    if (v.enable) {
+        registerWindow(v.id, v.link)
+    }
+})
 
 const openAll = () => {
     windows.get(USER)?.open(false)
-    windows.get(DEEPSEEK.id)?.open(true)
-    windows.get(DOUBAO.id)?.open(true)
-    windows.get(KIMI.id)?.open(true)
-    windows.get(TONGYI.id)?.open(true)
-    windows.get(HUNYUAN.id)?.open(true)
-    windows.get(ZHIPU.id)?.open(true)
-    // windows.get(MITA.id)?.open(true)
-    // windows.get(QINGYAN.id)?.open(true)
-    // windows.get(YIYAN)?.open(true)
-    // windows.get(ZHIDA)?.open(true)
+
+    Object.values(ASSISTANTS).forEach(v => {
+        if (v.enable) {
+            windows.get(v.id)?.open(true)
+        }
+    })
 }
 
 app.whenReady().then(() => {

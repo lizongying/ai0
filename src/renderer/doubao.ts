@@ -7,8 +7,6 @@ const hookRequest = () => {
                 return response.then(async (response: Response) => {
                     const clonedResponse = response.clone()
                     if (clonedResponse.url.includes('chat/completion')) {
-                        console.log('Response intercepted:', clonedResponse.url)
-
                         const reader = clonedResponse.body?.getReader()
                         const decoder = new TextDecoder()
 
@@ -31,12 +29,10 @@ const hookRequest = () => {
 
                     return response
                 })
-            } catch (error) {
-                console.error('Fetch error:', error)
+            } catch (_) {
             }
         }
     })
 }
 
 hookRequest()
-console.log('hookRequest')
