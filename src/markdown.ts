@@ -3,22 +3,32 @@ import markedPlaintify from 'marked-plaintify'
 
 import markedShiki from 'marked-shiki'
 import {codeToHtml} from 'shiki'
+import {markedExcel} from './shared/table.ts'
 
 class Markdown {
     private marked: Marked
 
-    constructor(plainText: boolean, highlight: boolean) {
+    constructor(type?: string) {
         this.marked = new Marked({gfm: true})
-        if (plainText) {
-            this.marked.use(markedPlaintify())
-        }
 
-        if (highlight) {
-            this.marked.use(markedShiki({
-                async highlight(code, lang) {
-                    return codeToHtml(code, {lang, theme: 'github-dark'})
-                },
-            }))
+        switch (type) {
+            case 'html':
+                break
+            case 'excel':
+                this.marked.use(markedExcel())
+                break
+            case 'plainText':
+                this.marked.use(markedPlaintify())
+                break
+            case 'highlight':
+                this.marked.use(markedShiki({
+                    async highlight(code, lang) {
+                        return codeToHtml(code, {lang, theme: 'github-dark'})
+                    },
+                }))
+                break
+            default:
+                break
         }
     }
 

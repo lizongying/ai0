@@ -171,7 +171,7 @@ const addDownload = () => {
     return div
 }
 
-const markdown = new Markdown(true, false)
+const markdown = new Markdown('plainText')
 
 const addPopup = (ele: Element, name: string) => {
     let popup = document.createElement('div')

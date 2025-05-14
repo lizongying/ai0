@@ -30,6 +30,14 @@ body {
   background-color: #333;
 }
 
+th {
+  border-bottom: 1.5px solid #333;
+}
+
+tr {
+  border-bottom: 1px solid #333;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

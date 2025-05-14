@@ -31,6 +31,8 @@ import {DatabaseManager} from './db.ts'
 
 import {ASSISTANTS, USER} from '../constants'
 
+const [messageApi, contextHolder] = message.useMessage()
+
 const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN, ZHIDA, YIYAN} = ASSISTANTS
 
 
@@ -260,7 +262,7 @@ interface Data {
 
 let dbManager: DatabaseManager | null = null
 
-const pageSize = 50
+const pageSize = 100
 let offset = 0
 
 let isComposing = false
@@ -288,19 +290,19 @@ onMounted(async () => {
   }
 
   if (window.electronAPI) {
-    window.electronAPI.sendMessage('status', {from: 'me', status: 'ready'})
+    window.electronAPI.sendMessage('status', {from: USER, status: 'ready'})
   }
 
   window.addEventListener('resize', handleResize)
   document.querySelector('textarea')?.addEventListener('keydown', handleKeydown)
 
   let rs = await dbManager.findMessages(pageSize, offset)
-  // console.log('rs', rs)
   if (rs) {
     for (const i of rs.reverse()) {
       const u = user[i.userId]
       if (u) {
-        const currentMessage = {
+        const currentMessage: Message = {
+          id: i.id,
           user: u,
           title: i.title,
           content: i.content,
@@ -341,6 +343,24 @@ const messages = reactive<Message[]>([])
 
 const messagesMap = new Map<string, Message>()
 
+const saveMessage = async (currentMessage: Message): Promise<number> => {
+  let messageId = Date.now()
+  if (settings.saveMessage) {
+    try {
+      messageId = await dbManager?.addMessage({
+        userId: currentMessage.user.id,
+        title: currentMessage.title,
+        content: currentMessage.content,
+        createTime: currentMessage.createTime,
+      }) || 0
+      console.log('Added message with ID:', messageId)
+    } catch (error) {
+      console.error('Failed to add message:', error)
+    }
+  }
+  return messageId
+}
+
 const addMessage = async (content: string, user: User) => {
   if (user.id === USER) {
     const currentMessage: Message = {
@@ -350,21 +370,9 @@ const addMessage = async (content: string, user: User) => {
       finished: true,
       render: 0,
     }
+    currentMessage.id = await saveMessage(currentMessage)
     // messagesMap.set(user.id, currentMessage)
     messages.push(currentMessage)
-    if (settings.saveMessage) {
-      try {
-        const messageId = await dbManager?.addMessage({
-          userId: currentMessage.user.id,
-          title: currentMessage.title,
-          content: currentMessage.content,
-          createTime: currentMessage.createTime,
-        })
-        console.log('Added message with ID:', messageId)
-      } catch (error) {
-        console.error('Failed to add message:', error)
-      }
-    }
   } else if (user.id === MITA.id) {
     if (content === 'NEW') {
       const currentMessage = {
@@ -383,15 +391,9 @@ const addMessage = async (content: string, user: User) => {
       const currentMessage = messagesMap.get(user.id)
       if (currentMessage) {
         currentMessage.finished = true
+        currentMessage.id = await saveMessage(currentMessage)
         messages.push({} as any)
         messages.pop()
-        const messageId = await dbManager?.addMessage({
-          userId: currentMessage.user.id,
-          title: currentMessage.title,
-          content: currentMessage.content,
-          createTime: currentMessage.createTime,
-        })
-        console.log('Added message with ID:', messageId)
       }
       return
     }
@@ -443,33 +445,13 @@ const addMessage = async (content: string, user: User) => {
 
         const currentMessage = messagesMap.get(user.id)
 
-        if (d?.data?.parts?.done === true && currentMessage) {
-          currentMessage.finished = true
-          messages.push({} as any)
-          messages.pop()
-          const messageId = await dbManager?.addMessage({
-            userId: currentMessage.user.id,
-            title: currentMessage.title,
-            content: currentMessage.content,
-            createTime: currentMessage.createTime,
-          })
-          console.log('Added message with ID:', messageId)
-        }
-
-
         const arr = d?.parts
         if (Array.isArray(arr) && arr.length > 0) {
           if (arr[0].status === 'finish' && currentMessage) {
             currentMessage.finished = true
+            currentMessage.id = await saveMessage(currentMessage)
             messages.push({} as any)
             messages.pop()
-            const messageId = await dbManager?.addMessage({
-              userId: currentMessage.user.id,
-              title: currentMessage.title,
-              content: currentMessage.content,
-              createTime: currentMessage.createTime,
-            })
-            console.log('Added message with ID:', messageId)
           }
 
           const ca = arr[0]?.content
@@ -513,17 +495,11 @@ const addMessage = async (content: string, user: User) => {
 
         const currentMessage = messagesMap.get(user.id)
 
-        if (d?.data?.data?.done === true && currentMessage) {
+        if (d?.data?.data?.done === true && currentMessage && !currentMessage.finished) {
           currentMessage.finished = true
+          currentMessage.id = await saveMessage(currentMessage)
           messages.push({} as any)
           messages.pop()
-          const messageId = await dbManager?.addMessage({
-            userId: currentMessage.user.id,
-            title: currentMessage.title,
-            content: currentMessage.content,
-            createTime: currentMessage.createTime,
-          })
-          console.log('Added message with ID:', messageId)
         }
 
         const c = d?.data?.data?.content
@@ -586,7 +562,6 @@ const addMessage = async (content: string, user: User) => {
           continue
         }
         const d = JSON.parse(i.slice(6))
-        console.log('d', d)
         const currentMessage = messagesMap.get(user.id)
         if (d?.model_response?.type === 1 && currentMessage) {
           currentMessage.thinkingStatus = 1
@@ -606,15 +581,9 @@ const addMessage = async (content: string, user: User) => {
         if (Array.isArray(arr) && arr.length > 0) {
           if (arr[0].finish_reason === 'stop' && currentMessage) {
             currentMessage.finished = true
+            currentMessage.id = await saveMessage(currentMessage)
             messages.push({} as any)
             messages.pop()
-            const messageId = await dbManager?.addMessage({
-              userId: currentMessage.user.id,
-              title: currentMessage.title,
-              content: currentMessage.content,
-              createTime: currentMessage.createTime,
-            })
-            console.log('Added message with ID:', messageId)
           }
           const thinking = arr[0]?.delta?.reasoning_content
           if (thinking && currentMessage) {
@@ -642,7 +611,6 @@ const addMessage = async (content: string, user: User) => {
           continue
         }
         const d = JSON.parse(i.slice(6))
-        console.log('d?.pkgId', d?.pkgId)
         if (d?.pkgId === 0) {
           const currentMessage = {
             user: user,
@@ -670,15 +638,9 @@ const addMessage = async (content: string, user: User) => {
 
         if (d?.stopReason === 'stop' && currentMessage) {
           currentMessage.finished = true
+          currentMessage.id = await saveMessage(currentMessage)
           messages.push({} as any)
           messages.pop()
-          const messageId = await dbManager?.addMessage({
-            userId: currentMessage.user.id,
-            title: currentMessage.title,
-            content: currentMessage.content,
-            createTime: currentMessage.createTime,
-          })
-          console.log('Added message with ID:', messageId)
         }
         const contents = d?.contents
         if (Array.isArray(contents) && contents.length > 0) {
@@ -722,6 +684,16 @@ const addMessage = async (content: string, user: User) => {
         if (!i.trim()) {
           continue
         }
+        const currentMessage = messagesMap.get(user.id)
+        if (i.trim() === '[DONE]') {
+          if (currentMessage && !currentMessage.finished) {
+            currentMessage.finished = true
+            currentMessage.id = await saveMessage(currentMessage)
+            messages.push({} as any)
+            messages.pop()
+          }
+          continue
+        }
         if (!i.startsWith('data: ')) {
           continue
         }
@@ -739,8 +711,6 @@ const addMessage = async (content: string, user: User) => {
           messages.push(currentMessage)
         }
 
-        const currentMessage = messagesMap.get(user.id)
-
         if (d?.event === 'chat_prompt') {
           if (d?.text && currentMessage) {
             if (!currentMessage.suggest) {
@@ -752,18 +722,6 @@ const addMessage = async (content: string, user: User) => {
           }
         }
 
-        if (d?.event === 'all_done' && currentMessage) {
-          currentMessage.finished = true
-          messages.push({} as any)
-          messages.pop()
-          const messageId = await dbManager?.addMessage({
-            userId: currentMessage.user.id,
-            title: currentMessage.title,
-            content: currentMessage.content,
-            createTime: currentMessage.createTime,
-          })
-          console.log('Added message with ID:', messageId)
-        }
         if (d?.event === 'k1') {
           if (d?.text && currentMessage) {
             currentMessage.thinkingStatus = 1
@@ -790,6 +748,16 @@ const addMessage = async (content: string, user: User) => {
         if (!i.trim()) {
           continue
         }
+        const currentMessage = messagesMap.get(user.id)
+        if (i.trim() === '[DONE]') {
+          if (currentMessage && !currentMessage.finished) {
+            currentMessage.finished = true
+            currentMessage.id = await saveMessage(currentMessage)
+            messages.push({} as any)
+            messages.pop()
+          }
+          continue
+        }
         if (!i.startsWith('data: ')) {
           continue
         }
@@ -806,7 +774,6 @@ const addMessage = async (content: string, user: User) => {
           messagesMap.set(user.id, currentMessage)
           messages.push(currentMessage)
         }
-        const currentMessage = messagesMap.get(user.id)
         if (d?.event_type === 2001) {
           const event_data = JSON.parse(d?.event_data)
           const text = JSON.parse(event_data?.message?.content)
@@ -829,7 +796,6 @@ const addMessage = async (content: string, user: User) => {
               currentMessage.suggest = []
             }
             currentMessage.suggest.push(text?.suggest)
-            console.log('suggest', currentMessage.suggest)
             messages.push({} as any)
             messages.pop()
           }
@@ -839,19 +805,6 @@ const addMessage = async (content: string, user: User) => {
             currentMessage.content += text?.text
             messages.push({} as any)
             messages.pop()
-          }
-
-          if (event_data?.is_finish && currentMessage) {
-            currentMessage.finished = true
-            messages.push({} as any)
-            messages.pop()
-            const messageId = await dbManager?.addMessage({
-              userId: currentMessage.user.id,
-              title: currentMessage.title,
-              content: currentMessage.content,
-              createTime: currentMessage.createTime,
-            })
-            console.log('Added message with ID:', messageId)
           }
         }
       }
@@ -893,18 +846,10 @@ const addMessage = async (content: string, user: User) => {
           }
         }
       } else if (r.event === 'close') {
-        if (settings.saveMessage && currentMessage) {
-          try {
-            const messageId = await dbManager?.addMessage({
-              userId: currentMessage.user.id,
-              title: currentMessage.title,
-              content: currentMessage.content,
-              createTime: currentMessage.createTime,
-            })
-            console.log('Added message with ID:', messageId)
-          } catch (error) {
-            console.error('Failed to add message:', error)
-          }
+        if (currentMessage) {
+          currentMessage.id = await saveMessage(currentMessage)
+          messages.push({} as any)
+          messages.pop()
         }
       } else if (!r.event && (r.data && 'p' in r.data)) {
         if (r.data.p === 'response/content') {
@@ -988,15 +933,13 @@ const sendMessage = async () => {
   mentions = []
   if (window.electronAPI) {
     mentions = [...new Set(getMentions(text))]
-    console.log('mentions', mentions)
     if (mentions.map((i: any) => i.value).includes('all')) {
-      console.log('all', users.filter(i => i !== user.me && i.online))
       users.filter(i => i !== user.me && i.online).forEach((i: any) => {
-        window.electronAPI.sendMessage('chat', {from: 'me', to: i.id, content: text})
+        window.electronAPI.sendMessage('chat', {from: USER, to: i.id, content: text})
       })
     } else {
       mentions.forEach((i: any) => {
-        window.electronAPI.sendMessage('chat', {from: 'me', to: i.value, content: text})
+        window.electronAPI.sendMessage('chat', {from: USER, to: i.value, content: text})
       })
     }
   }
@@ -1068,7 +1011,7 @@ const reset = async () => {
 }
 
 const openWindow = async (id: string) => {
-  window.electronAPI?.sendMessage('open', {from: 'me', to: id})
+  window.electronAPI?.sendMessage('open', {from: USER, to: id})
 }
 
 const newChat = async (id: string) => {
@@ -1096,6 +1039,15 @@ const handleSuggest = async (msg: string) => {
   await sendMessage()
 }
 
+const delMessage = async (id: number) => {
+  const index = messages.findIndex((message: Message) => message.id === id)
+  if (index !== -1) {
+    messages.splice(index, 1)
+  }
+  await dbManager?.removeMessage(id)
+  messageApi.info(`ID: ${id} 已刪除`)
+}
+
 </script>
 
 <template>
@@ -1112,6 +1064,7 @@ const handleSuggest = async (msg: string) => {
           },
     }"
   >
+    <contextHolder/>
     <a-layout>
       <a-layout-sider :style="siderStyle" :width="!collapsed ? 300 : 120">
         <a-affix :offset-top="0">
@@ -1185,7 +1138,7 @@ const handleSuggest = async (msg: string) => {
         </a-layout-header>
         <a-layout-content :style="contentStyle">
           <div ref="scrollContainer" class="scrollContainer">
-            <Chat :messages="messages" :settings="settings" @suggest="handleSuggest"></Chat>
+            <Chat :messages="messages" :settings="settings" @suggest="handleSuggest" @delMessage="delMessage"></Chat>
           </div>
         </a-layout-content>
         <a-layout-footer :style="footerStyle">

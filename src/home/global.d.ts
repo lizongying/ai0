@@ -19,6 +19,7 @@ declare global {
     }
 
     interface Message {
+        id?: number
         user: User
         title?: string
         content: string

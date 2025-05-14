@@ -1,3 +1,8 @@
+import {ASSISTANTS, USER} from '../constants'
+
+const {KIMI} = ASSISTANTS
+const assistant = KIMI.id
+
 const hookRequest = () => {
     const originalFetch = window.fetch
     window.fetch = new Proxy(originalFetch, {
@@ -6,7 +11,7 @@ const hookRequest = () => {
                 const response = Reflect.apply(target, thisArg, argumentsList)
                 return response.then(async (response: Response) => {
                     const clonedResponse = response.clone()
-                    if (clonedResponse.url.includes('completion/stream')||clonedResponse.url.includes('chat/recommend-prompt')) {
+                    if (clonedResponse.url.includes('completion/stream') || clonedResponse.url.includes('chat/recommend-prompt')) {
                         console.log('Response intercepted:', clonedResponse.url)
 
                         const reader = clonedResponse.body?.getReader()
@@ -21,22 +26,26 @@ const hookRequest = () => {
                                 console.log('Received chunk:', chunk)
 
                                 window.electronAPI.sendMessage('chat', {
-                                    from: 'kimi',
-                                    to: 'me',
+                                    from: assistant,
+                                    to: USER,
                                     data: chunk,
-                                });
+                                })
                             }
+                            window.electronAPI.sendMessage('chat', {
+                                from: assistant,
+                                to: USER,
+                                data: '[DONE]',
+                            })
                         }
                     }
 
                     return response
                 })
-            } catch (error) {
-                console.error('Fetch error:', error)
+            } catch (e) {
+                console.error('error:', e)
             }
         }
     })
 }
 
 hookRequest()
-console.log('hookRequest')

@@ -1,3 +1,8 @@
+import {ASSISTANTS, USER} from '../constants'
+
+const {DOUBAO} = ASSISTANTS
+const assistant = DOUBAO.id
+
 const hookRequest = () => {
     const originalFetch = window.fetch
     window.fetch = new Proxy(originalFetch, {
@@ -19,17 +24,23 @@ const hookRequest = () => {
                                 console.log('Received chunk:', chunk)
 
                                 window.electronAPI.sendMessage('chat', {
-                                    from: 'doubao',
-                                    to: 'me',
+                                    from: assistant,
+                                    to: USER,
                                     data: chunk,
-                                });
+                                })
                             }
+                            window.electronAPI.sendMessage('chat', {
+                                from: assistant,
+                                to: USER,
+                                data: '[DONE]',
+                            })
                         }
                     }
 
                     return response
                 })
-            } catch (_) {
+            } catch (e) {
+                console.log('error:', e)
             }
         }
     })
