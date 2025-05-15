@@ -1,5 +1,5 @@
 const {ipcRenderer, contextBridge} = require('electron')
-import translations from '../i18n'
+import {translations} from '../i18n'
 import {Markdown} from '../markdown.ts'
 
 let t = translations.hant

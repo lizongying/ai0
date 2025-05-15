@@ -46,7 +46,7 @@ class DatabaseManager {
         } catch (error) {
             console.error('Failed to open/create IndexedDB:', error);
         }
-        console.log('this.db',this.db)
+        console.log('this.db', this.db)
     }
 
     async findMessage(id: number): Promise<MessageStore | undefined> {
@@ -105,6 +105,64 @@ class DatabaseManager {
                 messages.push(cursor.value)
             } else {
                 offset--
+            }
+
+            if (limit < 1) {
+                break
+            }
+            cursor = await cursor.continue()
+        }
+
+        return new Promise((resolve) => resolve(messages))
+    }
+
+    async findPrevMessages(limit: number, id: number): Promise<MessageStore[]> {
+        if (!this.db) {
+            throw new Error('Database not initialized. Call initialize() first.');
+        }
+
+        const messages: MessageStore[] = []
+        if (limit < 1) {
+            return new Promise((resolve) => resolve(messages))
+        }
+
+        const transaction = this.db.transaction('messages', 'readonly')
+        const store = transaction.objectStore('messages')
+
+        let cursor = await store.openCursor(null, 'prev')
+        while (cursor) {
+            if ((cursor.value.id || 0) < id) {
+                limit--
+                messages.push(cursor.value)
+            }
+
+            if (limit < 1) {
+                break
+            }
+            cursor = await cursor.continue()
+        }
+
+        return new Promise((resolve) => resolve(messages))
+    }
+
+    async findNextMessages(limit: number, id: number): Promise<MessageStore[]> {
+        if (!this.db) {
+            throw new Error('Database not initialized. Call initialize() first.');
+        }
+
+        const messages: MessageStore[] = []
+        if (limit < 1) {
+            return new Promise((resolve) => resolve(messages))
+        }
+
+        const transaction = this.db.transaction('messages', 'readonly')
+        const store = transaction.objectStore('messages')
+
+        let cursor = await store.openCursor(null, 'next')
+        while (cursor) {
+            if ((cursor.value.id || 0) > id) {
+                limit--
+                messages.push(cursor.value)
             }
 
             if (limit < 1) {

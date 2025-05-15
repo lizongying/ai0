@@ -26,21 +26,14 @@ import {
 } from 'vue'
 import Chat from './components/Chat.vue'
 import {getImageUrl, getTimestamp, parseText} from './utils.ts'
-import translations from '../i18n'
+import {Lang, translations} from '../i18n'
 import {DatabaseManager} from './db.ts'
 
 import {ASSISTANTS, USER} from '../constants'
 
 const [messageApi, contextHolder] = message.useMessage()
 
-const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN, ZHIDA, YIYAN} = ASSISTANTS
-
-
-enum Lang {
-  Hant = '漢字',
-  Hans = '简体字',
-  En = 'English',
-}
+const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN} = ASSISTANTS
 
 const t = computed(() => {
   switch (settings.lang) {
@@ -75,6 +68,9 @@ const groupNotify = ref(`親愛的群成員們：
 
 const lines = computed(() => groupNotify.value.split('\n'))
 const lineMax = 5
+
+let oldestId = Number.MAX_SAFE_INTEGER
+let latestId = 0
 
 const headerStyle: CSSProperties = {
   height: 64,
@@ -150,107 +146,25 @@ watch(
     {deep: true}
 )
 
-const user: { [key: string]: User } = reactive({
-  deepseek: <User>{
-    id: DEEPSEEK.id,
-    name: 'DeepSeek',
-    avatar: 'deepseek.png',
-    link: DEEPSEEK.link,
-    desc: 'Chat with DeepSeek AI – your intelligent assistant for coding, content creation, file reading, and more. Upload documents, engage in long-context conversations, and get expert help in AI, natural language processing, and beyond. | 深度求索（DeepSeek）助力编程代码开发、创意写作、文件处理等任务，支持文件上传及长文本对话，随时为您提供高效的AI支持。',
+const user: { [key: string]: User } = reactive({})
+
+Object.values(ASSISTANTS).filter(v => v.enable).forEach((assistant) => {
+  user[assistant.id] = <User>{
+    ...assistant,
     online: false,
     me: false,
-  },
-  doubao: <User>{
-    id: DOUBAO.id,
-    name: '豆包',
-    avatar: 'doubao.png',
-    link: DOUBAO.link,
-    desc: '豆包是你的 AI 聊天智能对话问答助手，写作文案翻译编程全能工具。豆包为你答疑解惑，提供灵感，辅助创作，也可以和你畅聊任何你感兴趣的话题。',
-    online: false,
-    me: false,
-  },
-  kimi: <User>{
-    id: KIMI.id,
-    name: 'Kimi',
-    avatar: 'kimi.png',
-    link: KIMI.link,
-    desc: 'Kimi是一款学生和职场人的新质生产力工具。帮你解读论文，写代码查BUG，策划方案，创作小说，多语言翻译。有问题问Kimi，一键解决你的所有难题',
-    online: false,
-    me: false,
-  },
-  tongyi: <User>{
-    id: TONGYI.id,
-    name: '通义',
-    avatar: 'tongyi.png',
-    link: TONGYI.link,
-    desc: '通义是一个通情、达义的国产AI模型，可以帮你解答问题、文档阅读、联网搜索并写作总结，最多支持1000万字的文档速读。通义_你的全能AI助手',
-    online: false,
-    me: false,
-  },
-  hunyuan: <User>{
-    id: HUNYUAN.id,
-    name: '騰訊混元',
-    avatar: 'hunyuan.png',
-    link: HUNYUAN.link,
-    desc: '腾讯混元大模型是由腾讯研发的大语言模型，具备跨领域知识和自然语言理解能力，实现基于人机自然语言对话的方式，理解用户指令并执行任务，帮助用户实现人获取信息，知识和灵感。',
-    online: false,
-    me: false,
-  },
-  zhipu: <User>{
-    id: ZHIPU.id,
-    name: '智普',
-    avatar: 'zhipu.png',
-    link: ZHIPU.link,
-    desc: 'Z Chat is an advanced AI assistant developed by Z.ai. Built on open-source GLM models, it supports text generation, reasoning, and deep research - making it a powerful and free AI chatbot tailored for both English and Chinese users.',
-    online: false,
-    me: false,
-  },
-  mita: <User>{
-    id: MITA.id,
-    name: '秘塔AI搜索',
-    avatar: 'mita.png',
-    link: MITA.link,
-    desc: '秘塔AI搜索，没有广告，直达结果',
-    online: false,
-    me: false,
-  },
-  qingyan: <User>{
-    id: QINGYAN.id,
-    name: '智譜清言',
-    avatar: 'qingyan.png',
-    link: QINGYAN.link,
-    desc: '中国版对话语言模型，与GLM大模型进行对话。',
-    online: false,
-    me: false,
-  },
-  zhida: <User>{
-    id: ZHIDA.id,
-    name: '知乎直達',
-    avatar: 'zhida.png',
-    link: ZHIDA.link,
-    desc: '知乎直答（zhida.ai）是知乎推出的一款使用 AI 大模型等先进技术的产品，以知乎社区的优质内容为核心，多种数据源为辅助，为人们提供一种全新的获取可靠信息的途径。知乎直答是多智能体系统，能够满足用户多维度的需求；同时对生成结果进行溯源，以确保内容的可信、可控以及对知识产权和版权的尊重。知乎直答致力于为用户提供卓越的使用体验，用技术拉近创作者和用户之间的距离。有问题，就会有答案。',
-    online: false,
-    me: false,
-  },
-  yiyan: <User>{
-    id: YIYAN.id,
-    name: '文心一言',
-    avatar: 'yiyan.png',
-    link: YIYAN.link,
-    desc: '文心一言既是你的智能伙伴，可以陪你聊天、回答问题、画图识图；也是你的AI助手，可以提供灵感、撰写文案、阅读文档、智能翻译，帮你高效完成工作和学习任务。',
-    online: false,
-    me: false,
-  },
-  me: <User>{
-    id: USER,
-    name: computed(() => settings.myName),
-    avatar: computed(() => settings.avatar || ''),
-    link: 'https://github.com/lizongying/ai0/',
-    desc: '什麼都沒有說',
-    online: true,
-    me: true,
-  },
+  }
 })
+
+user[USER] = <User>{
+  id: USER,
+  name: computed(() => settings.myName),
+  avatar: computed(() => settings.avatar || ''),
+  link: 'https://github.com/lizongying/ai0/',
+  desc: '什麼都沒有說',
+  online: true,
+  me: true,
+}
 
 const users: User[] = reactive(Object.values(ASSISTANTS).filter(v => v.enable).map(v => user[v.id]).concat([user.me]))
 
@@ -310,9 +224,13 @@ onMounted(async () => {
           finished: true,
           render: 0,
         }
-        messagesMap.set(u.id, currentMessage)
         messages.push(currentMessage)
       }
+    }
+
+    if (messages && messages.length) {
+      oldestId = messages[0].id || Number.MAX_SAFE_INTEGER
+      latestId = messages[messages.length - 1].id || 0
     }
   }
 
@@ -339,8 +257,6 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 const messages = reactive<Message[]>([])
 
-// let currentMessage: Message | null = null
-
 const messagesMap = new Map<string, Message>()
 
 const saveMessage = async (currentMessage: Message): Promise<number> => {
@@ -358,43 +274,54 @@ const saveMessage = async (currentMessage: Message): Promise<number> => {
       console.error('Failed to add message:', error)
     }
   }
+  currentMessage.id = messageId
   return messageId
+}
+
+const newMessage = (user: User) => {
+  const currentMessage: Message = {
+    user: user,
+    content: '',
+    createTime: getTimestamp(),
+    finished: false,
+    render: 0,
+    thinking: '',
+  }
+  messagesMap.set(user.id, currentMessage)
+  messages.push(currentMessage)
+  if (messages.length > pageSize) {
+    messages.shift()
+  }
+}
+
+const finishedMessage = async (currentMessage: Message | undefined): Promise<void> => {
+  if (currentMessage && !currentMessage.finished) {
+    currentMessage.finished = true
+    currentMessage.id = await saveMessage(currentMessage)
+    messages.push({} as any)
+    messages.pop()
+
+    latestId = currentMessage.id
+  }
 }
 
 const addMessage = async (content: string, user: User) => {
   if (user.id === USER) {
-    const currentMessage: Message = {
-      user: user,
-      content: content,
-      createTime: getTimestamp(),
-      finished: true,
-      render: 0,
+    newMessage(user)
+    const currentMessage = messagesMap.get(user.id)
+    if (currentMessage) {
+      currentMessage.content = content
+      await finishedMessage(currentMessage)
     }
-    currentMessage.id = await saveMessage(currentMessage)
-    // messagesMap.set(user.id, currentMessage)
-    messages.push(currentMessage)
   } else if (user.id === MITA.id) {
     if (content === 'NEW') {
-      const currentMessage = {
-        user: user,
-        content: '',
-        createTime: getTimestamp(),
-        finished: false,
-        render: 0,
-      }
-      messagesMap.set(user.id, currentMessage)
-      messages.push(currentMessage)
+      newMessage(user)
       return
     }
 
     if (content === '[DONE]') {
       const currentMessage = messagesMap.get(user.id)
-      if (currentMessage) {
-        currentMessage.finished = true
-        currentMessage.id = await saveMessage(currentMessage)
-        messages.push({} as any)
-        messages.pop()
-      }
+      await finishedMessage(currentMessage)
       return
     }
 
@@ -419,15 +346,7 @@ const addMessage = async (content: string, user: User) => {
     }
   } else if (user.id === QINGYAN.id) {
     if (content === 'NEW') {
-      const currentMessage = {
-        user: user,
-        content: '',
-        createTime: getTimestamp(),
-        finished: false,
-        render: 0,
-      }
-      messagesMap.set(user.id, currentMessage)
-      messages.push(currentMessage)
+      newMessage(user)
       return
     }
 
@@ -447,11 +366,8 @@ const addMessage = async (content: string, user: User) => {
 
         const arr = d?.parts
         if (Array.isArray(arr) && arr.length > 0) {
-          if (arr[0].status === 'finish' && currentMessage) {
-            currentMessage.finished = true
-            currentMessage.id = await saveMessage(currentMessage)
-            messages.push({} as any)
-            messages.pop()
+          if (arr[0].status === 'finish') {
+            await finishedMessage(currentMessage)
           }
 
           const ca = arr[0]?.content
@@ -469,16 +385,7 @@ const addMessage = async (content: string, user: User) => {
     }
   } else if (user.id === ZHIPU.id) {
     if (content === 'NEW') {
-      const currentMessage = {
-        user: user,
-        content: '',
-        createTime: getTimestamp(),
-        finished: false,
-        render: 0,
-        thinking: '',
-      }
-      messagesMap.set(user.id, currentMessage)
-      messages.push(currentMessage)
+      newMessage(user)
       return
     }
 
@@ -495,11 +402,8 @@ const addMessage = async (content: string, user: User) => {
 
         const currentMessage = messagesMap.get(user.id)
 
-        if (d?.data?.data?.done === true && currentMessage && !currentMessage.finished) {
-          currentMessage.finished = true
-          currentMessage.id = await saveMessage(currentMessage)
-          messages.push({} as any)
-          messages.pop()
+        if (d?.data?.data?.done === true) {
+          await finishedMessage(currentMessage)
         }
 
         const c = d?.data?.data?.content
@@ -546,16 +450,7 @@ const addMessage = async (content: string, user: User) => {
           continue
         }
         if (i === 'NEW') {
-          const currentMessage = {
-            user: user,
-            content: '',
-            createTime: getTimestamp(),
-            finished: false,
-            render: 0,
-            thinking: '',
-          }
-          messagesMap.set(user.id, currentMessage)
-          messages.push(currentMessage)
+          newMessage(user)
           continue
         }
         if (!i.startsWith('data: ')) {
@@ -579,11 +474,8 @@ const addMessage = async (content: string, user: User) => {
 
         const arr = d?.choices
         if (Array.isArray(arr) && arr.length > 0) {
-          if (arr[0].finish_reason === 'stop' && currentMessage) {
-            currentMessage.finished = true
-            currentMessage.id = await saveMessage(currentMessage)
-            messages.push({} as any)
-            messages.pop()
+          if (arr[0].finish_reason === 'stop') {
+            await finishedMessage(currentMessage)
           }
           const thinking = arr[0]?.delta?.reasoning_content
           if (thinking && currentMessage) {
@@ -612,16 +504,7 @@ const addMessage = async (content: string, user: User) => {
         }
         const d = JSON.parse(i.slice(6))
         if (d?.pkgId === 0) {
-          const currentMessage = {
-            user: user,
-            content: '',
-            createTime: getTimestamp(),
-            finished: false,
-            render: 0,
-            thinking: '',
-          }
-          messagesMap.set(user.id, currentMessage)
-          messages.push(currentMessage)
+          newMessage(user)
         }
         const currentMessage = messagesMap.get(user.id)
 
@@ -636,11 +519,8 @@ const addMessage = async (content: string, user: User) => {
           continue
         }
 
-        if (d?.stopReason === 'stop' && currentMessage) {
-          currentMessage.finished = true
-          currentMessage.id = await saveMessage(currentMessage)
-          messages.push({} as any)
-          messages.pop()
+        if (d?.stopReason === 'stop') {
+          await finishedMessage(currentMessage)
         }
         const contents = d?.contents
         if (Array.isArray(contents) && contents.length > 0) {
@@ -686,12 +566,7 @@ const addMessage = async (content: string, user: User) => {
         }
         const currentMessage = messagesMap.get(user.id)
         if (i.trim() === '[DONE]') {
-          if (currentMessage && !currentMessage.finished) {
-            currentMessage.finished = true
-            currentMessage.id = await saveMessage(currentMessage)
-            messages.push({} as any)
-            messages.pop()
-          }
+          await finishedMessage(currentMessage)
           continue
         }
         if (!i.startsWith('data: ')) {
@@ -699,16 +574,7 @@ const addMessage = async (content: string, user: User) => {
         }
         const d = JSON.parse(i.slice(6))
         if (d?.event === 'resp') {
-          const currentMessage = {
-            user: user,
-            content: '',
-            createTime: getTimestamp(),
-            finished: false,
-            render: 0,
-            thinking: '',
-          }
-          messagesMap.set(user.id, currentMessage)
-          messages.push(currentMessage)
+          newMessage(user)
         }
 
         if (d?.event === 'chat_prompt') {
@@ -750,12 +616,7 @@ const addMessage = async (content: string, user: User) => {
         }
         const currentMessage = messagesMap.get(user.id)
         if (i.trim() === '[DONE]') {
-          if (currentMessage && !currentMessage.finished) {
-            currentMessage.finished = true
-            currentMessage.id = await saveMessage(currentMessage)
-            messages.push({} as any)
-            messages.pop()
-          }
+          await finishedMessage(currentMessage)
           continue
         }
         if (!i.startsWith('data: ')) {
@@ -763,16 +624,7 @@ const addMessage = async (content: string, user: User) => {
         }
         const d = JSON.parse(i.slice(6))
         if (d?.event_id === '0') {
-          const currentMessage = {
-            user: user,
-            content: '',
-            createTime: getTimestamp(),
-            finished: false,
-            render: 0,
-            thinking: '',
-          }
-          messagesMap.set(user.id, currentMessage)
-          messages.push(currentMessage)
+          newMessage(user)
         }
         if (d?.event_type === 2001) {
           const event_data = JSON.parse(d?.event_data)
@@ -810,27 +662,12 @@ const addMessage = async (content: string, user: User) => {
       }
     } catch {
     }
-  } else {
+  } else if (user.id === DEEPSEEK.id) {
     const rs = parseText(content)
     for (const r of rs) {
       const currentMessage = messagesMap.get(user.id)
       if (r.event === 'ready') {
-        const currentMessage = {
-          user: user,
-          content: '',
-          createTime: getTimestamp(),
-          finished: false,
-          render: 0,
-          thinking: '',
-        }
-        messagesMap.set(user.id, currentMessage)
-        messages.push(currentMessage)
-      } else if (r.event === 'finish') {
-        if (currentMessage) {
-          currentMessage.finished = true
-          messages.push({} as any)
-          messages.pop()
-        }
+        newMessage(user)
       } else if (r.event === 'update_session') {
         if (r.data && 'updated_at' in r.data && r.data.updated_at) {
           if (currentMessage) {
@@ -846,11 +683,7 @@ const addMessage = async (content: string, user: User) => {
           }
         }
       } else if (r.event === 'close') {
-        if (currentMessage) {
-          currentMessage.id = await saveMessage(currentMessage)
-          messages.push({} as any)
-          messages.pop()
-        }
+        await finishedMessage(currentMessage)
       } else if (!r.event && (r.data && 'p' in r.data)) {
         if (r.data.p === 'response/content') {
           if (currentMessage) {
@@ -920,7 +753,100 @@ const onSelect = (option: { value: string }) => {
 
 const content = ref('')
 
-const scrollContainer = ref<HTMLDivElement | null>(null)
+const scrollContainer = ref<any>(null)
+const scrollContent = ref<HTMLDivElement | null>(null)
+
+const loadMoreData = async (): Promise<number> => {
+  let rs = await dbManager?.findNextMessages(pageSize / 2, latestId)
+  if (rs && rs.length) {
+    for (const i of rs) {
+      const u = user[i.userId]
+      if (u) {
+        const currentMessage: Message = {
+          id: i.id,
+          user: u,
+          title: i.title,
+          content: i.content,
+          createTime: i.createTime,
+          finished: true,
+          render: 0,
+        }
+        messages.push(currentMessage)
+        if (messages.length > pageSize) {
+          messages.shift()
+        }
+      }
+    }
+
+    if (messages && messages.length) {
+      oldestId = messages[0].id || Number.MAX_SAFE_INTEGER
+      latestId = messages[messages.length - 1].id || 0
+    }
+  }
+
+  console.log('loadMoreData', latestId, rs?.length || 0)
+  return rs?.length || 0
+}
+
+const loadEarlierData = async (): Promise<number> => {
+  let rs = await dbManager?.findPrevMessages(pageSize / 2, oldestId)
+  if (rs && rs.length) {
+    for (const i of rs) {
+      const u = user[i.userId]
+      if (u) {
+        const currentMessage: Message = {
+          id: i.id,
+          user: u,
+          title: i.title,
+          content: i.content,
+          createTime: i.createTime,
+          finished: true,
+          render: 0,
+        }
+        messages.unshift(currentMessage)
+        if (messages.length > pageSize) {
+          messages.pop()
+        }
+      }
+    }
+
+    if (messages && messages.length) {
+      oldestId = messages[0].id || Number.MAX_SAFE_INTEGER
+      latestId = messages[messages.length - 1].id || 0
+    }
+  }
+
+  console.log('loadEarlierData', oldestId, rs?.length || 0)
+  return rs?.length || 0
+}
+
+const SCROLL_DEBOUNCE_MS = 200
+const SCROLL_THRESHOLD = 10
+let lastScrollTop = 0
+let debounceTimer: any = null
+
+const handleScroll = async () => {
+  const container = scrollContainer.value.$el
+  if (!container) return
+  const scrollTop = container.scrollTop || 0
+  const scrollHeight = container.scrollHeight || 0
+  const clientHeight = container.clientHeight || 0
+
+  const scrollDirection = scrollTop > lastScrollTop ? 'down' : 'up'
+  lastScrollTop = scrollTop
+
+  const isNearBottom = scrollTop + clientHeight >= scrollHeight - SCROLL_THRESHOLD
+
+  if (debounceTimer) clearTimeout(debounceTimer)
+
+  debounceTimer = setTimeout(async () => {
+    if (scrollDirection === 'down' && isNearBottom) {
+      await loadMoreData()
+    } else if (scrollDirection === 'up' && scrollTop <= SCROLL_THRESHOLD) {
+      await loadEarlierData()
+    }
+  }, SCROLL_DEBOUNCE_MS)
+}
 
 let mentions: any = []
 
@@ -951,7 +877,7 @@ const sendMessage = async () => {
 const scrollToBottom = async () => {
   await nextTick(() => {
     setTimeout(() => {
-      const parentElement = scrollContainer.value?.parentElement
+      const parentElement = scrollContent.value?.parentElement
       if (parentElement) {
         parentElement.scrollTop = parentElement.scrollHeight
       }
@@ -1033,7 +959,6 @@ const handleCompositionEnd = () => {
 }
 
 const handleSuggest = async (msg: string) => {
-  console.log('handleSuggest', msg)
   const m = mentions.length > 0 ? mentions.map((i: any) => `@${i.value}`).join(' ') + ' ' : ''
   content.value = `${m} ${msg}`
   await sendMessage()
@@ -1136,8 +1061,8 @@ const delMessage = async (id: number) => {
           </a-flex>
 
         </a-layout-header>
-        <a-layout-content :style="contentStyle">
-          <div ref="scrollContainer" class="scrollContainer">
+        <a-layout-content :style="contentStyle" ref="scrollContainer" @scroll="handleScroll">
+          <div ref="scrollContent">
             <Chat :messages="messages" :settings="settings" @suggest="handleSuggest" @delMessage="delMessage"></Chat>
           </div>
         </a-layout-content>

@@ -28,6 +28,8 @@ const translations = {
         copyAsExcel: '複製為Excel',
         copyAsTxt: '複製為Txt',
         copyAsMd: '複製為Markdown',
+        downloaded: '已下載',
+        copied: '已複製',
     },
     hans: {
         doc: '复制为DOC',
@@ -58,6 +60,8 @@ const translations = {
         copyAsExcel: '复制为Excel',
         copyAsTxt: '复制为Txt',
         copyAsMd: '复制为Markdown',
+        downloaded: '已下载',
+        copied: '已复制',
     },
     en: {
         doc: 'Copy as DOC',
@@ -88,7 +92,18 @@ const translations = {
         copyAsExcel: 'Copy as Excel',
         copyAsTxt: 'Copy as Txt',
         copyAsMd: 'Copy as Markdown',
+        downloaded: 'Downloaded',
+        copied: 'Copied',
     },
 }
 
-export default translations
+enum Lang {
+    Hant = '漢字',
+    Hans = '简体字',
+    En = 'English',
+}
+
+export {
+    Lang,
+    translations,
+}

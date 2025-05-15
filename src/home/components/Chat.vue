@@ -11,18 +11,16 @@ import {
   FileExcelOutlined
 } from '@ant-design/icons-vue'
 import {getImageUrl} from '../utils.ts'
-import translations from '../../i18n.ts'
+import {Lang, translations} from '../../i18n.ts'
+
+import {message} from 'ant-design-vue'
+
+const [messageApi, contextHolder] = message.useMessage()
 
 const markdown = new Markdown()
 const mdExcel = new Markdown('excel')
 const mdPlaintext = new Markdown('plainText')
 const mdHighlight = new Markdown('highlight')
-
-enum Lang {
-  Hant = '漢字',
-  Hans = '简体字',
-  En = 'English',
-}
 
 const t = computed(() => {
   switch (props.settings.lang) {
@@ -46,10 +44,11 @@ watch(() => props.messages, async (newMessages) => {
 
   try {
     const processed = await Promise.all(
-        newMessages.map(async (msg, index) => {
+        // newMessages.filter(i => i.id)
+        newMessages.map(async (msg) => {
           if (msg.content) {
-            const m = messages[index]
-            if (m && m.render >= msg.content.length && m.content === msg.content) {
+            const m = messages.find(x => x.id === msg.id)
+            if (m && m.render >= msg.content.length) {
               if (msg.title) {
                 m.title = msg.title
               }
@@ -57,7 +56,6 @@ watch(() => props.messages, async (newMessages) => {
                 m.finished = msg.finished
               }
               if (msg.suggest) {
-                // m.suggest = msg.suggest
                 m.suggest = [...msg.suggest]
               }
               return m
@@ -106,6 +104,7 @@ const downloadTextFile = (content: string, filename = '') => {
 
 const download = (md: string, title: string | undefined) => {
   downloadTextFile(md, (title || md.split('\n')[0].slice(0, 10)) + '.txt')
+  messageApi.info(t.value.downloaded)
 }
 
 const copyAsDoc = async (md: string) => {
@@ -115,12 +114,13 @@ const copyAsDoc = async (md: string) => {
     [type]: new Blob([outerHTML], {type}),
   };
   try {
-    console.log('html:', outerHTML)
+    console.log('doc:', outerHTML)
     const clipboardItem = new ClipboardItem(clipboardItemData)
     await navigator.clipboard.write([clipboardItem])
   } catch (err) {
     console.error(err)
   }
+  messageApi.info(t.value.copied)
 }
 
 const copyAsExcel = async (md: string) => {
@@ -130,25 +130,27 @@ const copyAsExcel = async (md: string) => {
     [type]: new Blob([outerHTML], {type}),
   };
   try {
-    console.log('html:', outerHTML)
+    console.log('excel:', outerHTML)
     const clipboardItem = new ClipboardItem(clipboardItemData)
     await navigator.clipboard.write([clipboardItem])
   } catch (err) {
     console.error(err)
   }
+  messageApi.info(t.value.copied)
 }
 
 const copyAsTxt = async (md: string) => {
   console.log('md', md)
   const txt = await mdPlaintext.render(md)
 
-  console.log('plainText.render(md)', txt)
-
+  console.log('txt:', txt)
   await navigator.clipboard.writeText(txt.replace(/\n+/g, '\n'))
+  messageApi.info(t.value.copied)
 }
 
 const copyAsMd = async (md: string) => {
   await navigator.clipboard.writeText(md)
+  messageApi.info(t.value.copied)
 }
 
 const emit = defineEmits(['suggest', 'delMessage'])
@@ -174,18 +176,10 @@ const activeRow = ref(1)
 const handleMouseOver = (index: number) => {
   activeRow.value = index
 }
-
-const handleHtmlMouseOver = (event: any) => {
-  const table = event.target.closest('table')
-  if (table) {
-    console.log('Table wrapper clicked!');
-    // 在这里添加你的逻辑
-  }
-}
-
 </script>
 
 <template>
+  <contextHolder/>
   <div class="messages-container">
     <div :class="messageContainerClass(message.user.me)" v-for="(message, index) in messages" :key="index">
       <a-tooltip v-if="!message.user.me">
@@ -213,7 +207,7 @@ const handleHtmlMouseOver = (event: any) => {
               </a-typography-text>
             </a-collapse-panel>
           </a-collapse>
-          <div v-html="message.html" @mouseover="handleHtmlMouseOver"></div>
+          <div v-html="message.html"></div>
           <a-space direction="vertical" v-if="message.suggest" style="margin-top: 1em;">
             <a-typography-text underline class="link" v-for="(item, index) in message.suggest"
                                :key="index" @click="suggest(item)">{{ item }}
