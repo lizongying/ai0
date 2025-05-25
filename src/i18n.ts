@@ -30,6 +30,7 @@ const translations = {
         copyAsMd: '複製為Markdown',
         downloaded: '已下載',
         copied: '已複製',
+        translate: '翻譯',
     },
     hans: {
         doc: '复制为DOC',
@@ -62,6 +63,7 @@ const translations = {
         copyAsMd: '复制为Markdown',
         downloaded: '已下载',
         copied: '已复制',
+        translate: '翻译',
     },
     en: {
         doc: 'Copy as DOC',
@@ -94,6 +96,7 @@ const translations = {
         copyAsMd: 'Copy as Markdown',
         downloaded: 'Downloaded',
         copied: 'Copied',
+        translate: 'Translate',
     },
 }
 

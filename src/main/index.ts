@@ -161,6 +161,10 @@ app.whenReady().then(() => {
         windows.get(message.to)?.window?.webContents.send('chat', message)
     })
 
+    ipcMain.on('file', (_, message) => {
+        windows.get(message.to)?.window?.webContents.send('file', message)
+    })
+
     ipcMain.on('open', (_, message) => {
         windows.get(message.to)?.open(false)
     })

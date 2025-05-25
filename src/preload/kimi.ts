@@ -8,21 +8,37 @@ const lineColor = 'currentColor'
 const fullColor = 'none'
 const user = 'kimi'
 const inputSelector = '.chat-input-editor'
+const buttonSelector = '.send-button'
 
 const chat = (msg: String) => {
     ipcRenderer.send('chat', {from: user, to: 'me', data: msg})
 }
 
-ipcRenderer.on('chat', (_: any, message: any) => {
+ipcRenderer.on('chat', async (_: any, message: any) => {
     console.log('Received from chat:', message)
     const input = document.querySelector(inputSelector) as HTMLTextAreaElement
     input.focus()
     input.value = ''
     document.execCommand('insertText', false, message.content)
-    const button = document.querySelector('.send-button');
-    setTimeout(() => {
-        (button as HTMLElement).click()
-    }, 500)
+    const button = document.querySelector(buttonSelector) as HTMLButtonElement
+    await observerChat(button)
+})
+
+ipcRenderer.on('file', (_: any, message: MessageFile) => {
+    console.log('Received from file:', message)
+
+    const blob = new Blob([message.fileData], {type: message.fileType})
+    const file = new File([blob], message.fileName, {
+        type: message.fileType,
+        lastModified: new Date().getTime()
+    })
+
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(file)
+
+    const input = document.querySelector('[type="file"]') as HTMLInputElement
+    input.files = dataTransfer.files
+    input.dispatchEvent(new Event('change', {bubbles: true}))
 })
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -45,6 +61,45 @@ document.addEventListener('DOMContentLoaded', () => {
     `)
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
 })
+
+const observerChat = async (button: HTMLButtonElement) => {
+    const parent = button.parentElement
+    if (parent) {
+        const observer = new MutationObserver((mutationsList) => {
+            for (const mutation of mutationsList) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    if (!parent.classList.contains('disabled')) {
+                        observer.disconnect()
+                        clearInterval(interval)
+                        console.log('button.click()')
+                        button.click()
+                    }
+                }
+            }
+        })
+
+        observer.observe(parent, {
+            attributes: true,
+            attributeFilter: ['class']
+        })
+
+        const interval = setInterval(() => {
+            const button = document.querySelector(buttonSelector) as HTMLButtonElement
+            const parent = button.parentElement
+            if (parent && !parent.classList.contains('disabled')) {
+                observer.disconnect()
+                clearInterval(interval)
+                console.log('click', parent)
+                button.click()
+            }
+        }, 100)
+
+        setTimeout(() => {
+            observer.disconnect()
+            clearInterval(interval)
+        }, 60_000)
+    }
+}
 
 const observerButtons = () => {
     const observer = new MutationObserver((mutationsList) => {

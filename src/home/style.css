@@ -38,6 +38,12 @@ tr {
   border-bottom: 1px solid #333;
 }
 
+.fileList .ant-upload-list-item-name {
+  width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

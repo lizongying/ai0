@@ -2,7 +2,6 @@
 import {
   EllipsisOutlined,
   FileAddOutlined,
-  FileImageOutlined,
   LoadingOutlined,
   PlusOutlined,
   RightOutlined,
@@ -10,7 +9,10 @@ import {
   TranslationOutlined,
   UserOutlined
 } from '@ant-design/icons-vue'
-import {Mentions, message, theme} from 'ant-design-vue'
+import {Mentions, message, theme, type UploadProps} from 'ant-design-vue'
+
+import {v4 as uuidv4} from 'uuid';
+
 
 import {
   computed,
@@ -858,20 +860,59 @@ const sendMessage = async () => {
 
   mentions = []
   if (window.electronAPI) {
+
+    const file = fileData.value
+
+    const uuid = uuidv4()
+
     mentions = [...new Set(getMentions(text))]
     if (mentions.map((i: any) => i.value).includes('all')) {
       users.filter(i => i !== user.me && i.online).forEach((i: any) => {
-        window.electronAPI.sendMessage('chat', {from: USER, to: i.id, content: text})
+        if (file) {
+          const arr = i.accept.split(',')
+          if (!arr.some((element: string) => file.name.includes(element))) {
+            message.warning(`${i.id} support: ${i.accept}`)
+          } else {
+            window.electronAPI.sendMessage('file', <MessageFile>{
+              from: USER,
+              to: i.id,
+              fileName: file.name,
+              fileType: file.type,
+              fileData: file.data,
+              id: uuid
+            })
+          }
+        }
+
+        window.electronAPI.sendMessage('chat', {from: USER, to: i.id, content: text, id: uuid})
       })
     } else {
       mentions.forEach((i: any) => {
-        window.electronAPI.sendMessage('chat', {from: USER, to: i.value, content: text})
+        if (file) {
+          const arr = user[i.value].accept.split(',')
+          if (!arr.some(element => file.name.includes(element))) {
+            message.warning(`${i.value} support: ${user[i.value].accept}`)
+          } else {
+            window.electronAPI.sendMessage('file', <MessageFile>{
+              from: USER,
+              to: i.value,
+              fileName: file.name,
+              fileType: file.type,
+              fileData: file.data,
+              id: uuid
+            })
+          }
+        }
+        window.electronAPI.sendMessage('chat', {from: USER, to: i.value, content: text, id: uuid})
       })
     }
   }
 
   await addMessage(text, user.me)
   content.value = mentions.length > 0 ? mentions.map((i: any) => `@${i.value}`).join(' ') + ' ' : ''
+
+  fileList.value = []
+  fileData.value = null
 }
 
 const scrollToBottom = async () => {
@@ -973,6 +1014,41 @@ const delMessage = async (id: number) => {
   messageApi.info(`ID: ${id} 已刪除`)
 }
 
+const fileData = ref<FileData | null>(null)
+
+const beforeFileUpload = async (file: File) => {
+  console.log('before fileUpload', file)
+  fileData.value = {
+    name: file.name,
+    type: file.type,
+    data: await file.arrayBuffer(),
+  }
+
+  const url = URL.createObjectURL(file)
+  console.log(url)
+  loading.value = true
+  // imageUrl.value = url
+
+  const reader = new FileReader()
+  reader.addEventListener('load', () => {
+
+    // const fileDataUrl = reader.result;
+
+    // settings.avatar = reader.result as string
+  })
+  reader.readAsDataURL(file)
+
+  // user.me.avatar = url
+  loading.value = false
+  return false
+}
+
+const fileList = ref<UploadProps['fileList']>([])
+
+const translate = ref(false)
+const changeTranslate = () => {
+  translate.value = !translate.value
+}
 </script>
 
 <template>
@@ -1026,9 +1102,6 @@ const delMessage = async (id: number) => {
 
                   <template #avatar>
                     <a-badge :dot="true" :color="item.online ? 'green' : 'red'">
-                      <!--                      <template #count>-->
-                      <!--                        <ClockCircleOutlined style="color: #f5222d"/>-->
-                      <!--                      </template>-->
                       <a-tooltip>
                         <template #title>{{ item.name }}</template>
                         <a-avatar :src="getImageUrl(item.avatar)" shape="square" :size="64"
@@ -1081,29 +1154,40 @@ const delMessage = async (id: number) => {
                 @select="onSelect"
                 @compositionstart="handleCompositionStart"
                 @compositionend="handleCompositionEnd"
-            ></a-mentions>
+            >
+
+
+            </a-mentions>
+
+            <div class="fileList">
+              <a-upload
+                  v-model:file-list="fileList"
+              >
+              </a-upload>
+            </div>
             <a-flex justify="flex-end" align="flex-end" class="send">
               <a-space size="small">
-                <a-tooltip :title="t.image">
-                  <a-button shape="circle">
+                <a-tooltip :title="t.translate">
+                  <a-button shape="circle" @click="changeTranslate" :type="translate?'primary':''">
                     <template #icon>
                       <TranslationOutlined/>
                     </template>
                   </a-button>
                 </a-tooltip>
-                <a-tooltip :title="t.image">
-                  <a-button shape="circle">
-                    <template #icon>
-                      <FileImageOutlined/>
-                    </template>
-                  </a-button>
-                </a-tooltip>
                 <a-tooltip :title="t.file">
-                  <a-button shape="circle">
-                    <template #icon>
-                      <FileAddOutlined/>
+                  <a-upload
+                      v-model:file-list="fileList"
+                      maxCount="1"
+                      :before-upload="beforeFileUpload"
+                  >
+                    <a-button shape="circle">
+                      <template #icon>
+                        <FileAddOutlined/>
+                      </template>
+                    </a-button>
+                    <template #itemRender="">
                     </template>
-                  </a-button>
+                  </a-upload>
                 </a-tooltip>
                 <a-tooltip :title="t.send">
                   <a-button type="primary" shape="circle" :icon="h(SendOutlined)" @click="sendMessage"/>
@@ -1243,10 +1327,26 @@ a {
 
 .send {
   position: absolute;
-  width: 100%;
   right: 10px;
   bottom: 10px;
   display: flex;
   justify-content: end;
+}
+
+.fileList {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  display: flex;
+  justify-content: end;
+}
+
+.hidden-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  z-index: -1;
 }
 </style>

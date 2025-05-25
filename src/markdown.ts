@@ -4,6 +4,8 @@ import markedPlaintify from 'marked-plaintify'
 import markedShiki from 'marked-shiki'
 import {codeToHtml} from 'shiki'
 import {markedExcel} from './shared/table.ts'
+import hljs from 'highlight.js';
+
 
 class Markdown {
     private marked: Marked
@@ -23,7 +25,15 @@ class Markdown {
             case 'highlight':
                 this.marked.use(markedShiki({
                     async highlight(code, lang) {
-                        return codeToHtml(code, {lang, theme: 'github-dark'})
+                        try {
+                            return await codeToHtml(code, {lang, theme: 'github-dark'})
+                        } catch (error) {
+                            if (hljs.getLanguage(lang)) {
+                                return hljs.highlight(code, {language: lang}).value
+                            } else {
+                                return `<pre><code class="language-${lang}">${escapeHtml(code)}</code></pre>`
+                            }
+                        }
                     },
                 }))
                 break
@@ -35,6 +45,15 @@ class Markdown {
     render(md: string) {
         return this.marked.parse(md)
     }
+}
+
+function escapeHtml(unsafe: string) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 export {Markdown}

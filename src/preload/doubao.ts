@@ -8,19 +8,37 @@ const lineColor = 'currentColor'
 const fullColor = 'none'
 const user = 'doubao'
 const inputSelector = '[data-testid="chat_input_input"]'
+const buttonSelector = '#flow-end-msg-send'
 
 const chat = (msg: String) => {
     ipcRenderer.send('chat', {from: user, to: 'me', data: msg})
 }
 
-ipcRenderer.on('chat', (_: any, message: any) => {
+ipcRenderer.on('chat', async (_: any, message: any) => {
     console.log('Received from chat:', message)
     const input = document.querySelector(inputSelector) as HTMLTextAreaElement
     input.focus()
     input.value = ''
     document.execCommand('insertText', false, message.content)
-    const button = document.querySelector('#flow-end-msg-send');
-    (button as HTMLElement).click()
+    const button = document.querySelector(buttonSelector) as HTMLButtonElement;
+    await observerChat(button)
+})
+
+ipcRenderer.on('file', (_: any, message: MessageFile) => {
+    console.log('Received from file:', message)
+
+    const blob = new Blob([message.fileData], {type: message.fileType})
+    const file = new File([blob], message.fileName, {
+        type: message.fileType,
+        lastModified: new Date().getTime()
+    })
+
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(file)
+
+    const input = document.querySelector('[type="file"]') as HTMLInputElement
+    input.files = dataTransfer.files
+    input.dispatchEvent(new Event('change', {bubbles: true}))
 })
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -43,6 +61,39 @@ document.addEventListener('DOMContentLoaded', () => {
     `)
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
 })
+
+const observerChat = async (button: HTMLButtonElement) => {
+    const observer = new MutationObserver((mutationsList) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'aria-disabled') {
+                if (button.getAttribute('aria-disabled') === 'false') {
+                    observer.disconnect()
+                    clearInterval(interval)
+                    button.click()
+                }
+            }
+        }
+    })
+
+    observer.observe(button, {
+        attributes: true,
+        attributeFilter: ['aria-disabled']
+    })
+
+    const interval = setInterval(() => {
+        const button = document.querySelector(buttonSelector) as HTMLButtonElement
+        if (button.getAttribute('aria-disabled') === 'false') {
+            observer.disconnect()
+            clearInterval(interval)
+            button.click()
+        }
+    }, 100)
+
+    setTimeout(() => {
+        observer.disconnect()
+        clearInterval(interval)
+    }, 60_000)
+}
 
 const observerButtons = () => {
     const observer = new MutationObserver((mutationsList) => {

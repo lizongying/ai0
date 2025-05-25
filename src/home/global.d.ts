@@ -14,6 +14,7 @@ declare global {
         avatar: string | ComputedRef<string>
         link: string
         desc: string
+        accept: string,
         online: boolean
         me: boolean
     }
