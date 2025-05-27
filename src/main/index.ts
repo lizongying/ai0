@@ -22,7 +22,7 @@ const createMe = (headless: boolean): BrowserWindow => {
         skipTaskbar: headless,
         webPreferences: {
             preload: path.join(__dirname, '../preload/me.js'),
-            nodeIntegration: false,
+            nodeIntegration: true,
             contextIsolation: true,
         },
     })
@@ -157,23 +157,23 @@ const openAll = () => {
 app.whenReady().then(() => {
     openAll()
 
-    ipcMain.on('chat', (_, message) => {
+    ipcMain.on('chat', (_, message: MessageChat) => {
         windows.get(message.to)?.window?.webContents.send('chat', message)
     })
 
-    ipcMain.on('file', (_, message) => {
+    ipcMain.on('file', (_, message: MessageFile) => {
         windows.get(message.to)?.window?.webContents.send('file', message)
     })
 
-    ipcMain.on('open', (_, message) => {
+    ipcMain.on('open', (_, message: MessageOpen) => {
         windows.get(message.to)?.open(false)
     })
 
-    ipcMain.on('close', (_, message) => {
+    ipcMain.on('close', (_, message: MessageClose) => {
         windows.get(message.to)?.open(true)
     })
 
-    ipcMain.on('status', (_, message) => {
+    ipcMain.on('status', (_, message: MessageStatus) => {
         windows.get(USER)?.window?.webContents.send('status', message)
     })
 })

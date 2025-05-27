@@ -1,3 +1,8 @@
+import {ASSISTANTS, USER} from '../constants'
+
+const {ZHIDA} = ASSISTANTS
+
+const assistant = ZHIDA
 const hookRequest = () => {
     const originalFetch = window.fetch
     window.fetch = new Proxy(originalFetch, {
@@ -18,11 +23,11 @@ const hookRequest = () => {
                                 if (done) break
 
                                 const chunk = decoder.decode(value, {stream: true})
-                                console.log('Received chunk:', chunk)
+                                // console.log('Received chunk:', chunk)
 
-                                window.electronAPI.sendMessage('chat', {
-                                    from: 'zhida',
-                                    to: 'me',
+                                window.electronAPI.sendMessage('chat', <MessageChat>{
+                                    from: assistant.id,
+                                    to: USER,
                                     data: chunk,
                                 });
                             }

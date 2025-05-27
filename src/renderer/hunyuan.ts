@@ -1,7 +1,7 @@
 import {ASSISTANTS, USER} from '../constants'
 
 const {HUNYUAN} = ASSISTANTS
-const user = HUNYUAN.id
+const assistant = HUNYUAN
 
 const hookRequest = () => {
     const originalFetch = window.fetch
@@ -19,20 +19,20 @@ const hookRequest = () => {
                         const decoder = new TextDecoder()
 
                         if (reader) {
-                            window.electronAPI.sendMessage('chat', {
-                                from: user,
+                            window.electronAPI.sendMessage('chat', <MessageChat>{
+                                from: assistant.id,
                                 to: USER,
-                                data: 'NEW',
+                                data: '[NEW]',
                             })
                             while (true) {
                                 const {done, value} = await reader.read()
                                 if (done) break
 
                                 const chunk = decoder.decode(value, {stream: true})
-                                console.log('Received chunk:', chunk)
+                                // console.log('Received chunk:', chunk)
 
-                                window.electronAPI.sendMessage('chat', {
-                                    from: user,
+                                window.electronAPI.sendMessage('chat', <MessageChat>{
+                                    from: assistant.id,
                                     to: USER,
                                     data: chunk,
                                 });

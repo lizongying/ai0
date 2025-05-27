@@ -35,7 +35,7 @@ import {ASSISTANTS, USER} from '../constants'
 
 const [messageApi, contextHolder] = message.useMessage()
 
-const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN} = ASSISTANTS
+const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN, SHUSHENG} = ASSISTANTS
 
 const t = computed(() => {
   switch (settings.lang) {
@@ -170,12 +170,6 @@ user[USER] = <User>{
 
 const users: User[] = reactive(Object.values(ASSISTANTS).filter(v => v.enable).map(v => user[v.id]).concat([user.me]))
 
-interface Data {
-  from: string
-  to: string
-  data: string
-}
-
 let dbManager: DatabaseManager | null = null
 
 const pageSize = 100
@@ -186,7 +180,7 @@ let isComposing = false
 const {getMentions} = Mentions
 
 onBeforeMount(async () => {
-  window.electronAPI?.onMessage('status', async (data: Data) => {
+  window.electronAPI?.onMessage('status', async (data: MessageStatus) => {
     console.log('status data:', data)
     if (user[data.from]) {
       user[data.from].online = true
@@ -199,7 +193,7 @@ onMounted(async () => {
   await dbManager.initialize()
 
   if (window.electronAPI) {
-    window.electronAPI.onMessage('chat', async (data: Data) => {
+    window.electronAPI.onMessage('chat', async (data: MessageChat) => {
       // console.log('chat data:', data)
       await addMessage(data.data, user[data.from])
     })
@@ -315,8 +309,43 @@ const addMessage = async (content: string, user: User) => {
       currentMessage.content = content
       await finishedMessage(currentMessage)
     }
+  } else if (user.id === SHUSHENG.id) {
+    if (content === '[NEW]') {
+      newMessage(user)
+      return
+    }
+
+    if (content === '[DONE]') {
+      const currentMessage = messagesMap.get(user.id)
+      await finishedMessage(currentMessage)
+      return
+    }
+
+    let t = content.trim().split('\n\n')
+    try {
+      for (const i of t) {
+        if (!i.trim()) {
+          continue
+        }
+        if (!i.startsWith('data: ')) {
+          continue
+        }
+        const d = JSON.parse(i.slice(6)).data
+        // console.log('d', d)
+
+        const currentMessage = messagesMap.get(user.id)
+
+        if (d?.response && currentMessage) {
+          currentMessage.content = d?.response
+          messages.push({} as any)
+          messages.pop()
+        }
+      }
+    } catch(e) {
+      console.error(e)
+    }
   } else if (user.id === MITA.id) {
-    if (content === 'NEW') {
+    if (content === '[NEW]') {
       newMessage(user)
       return
     }
@@ -334,7 +363,7 @@ const addMessage = async (content: string, user: User) => {
           continue
         }
         const d = JSON.parse(i)
-        console.log('d', d)
+        // console.log('d', d)
 
         const currentMessage = messagesMap.get(user.id)
 
@@ -347,7 +376,7 @@ const addMessage = async (content: string, user: User) => {
     } catch {
     }
   } else if (user.id === QINGYAN.id) {
-    if (content === 'NEW') {
+    if (content === '[NEW]') {
       newMessage(user)
       return
     }
@@ -362,7 +391,7 @@ const addMessage = async (content: string, user: User) => {
           continue
         }
         const d = JSON.parse(i.slice(6))
-        console.log('d', d)
+        // console.log('d', d)
 
         const currentMessage = messagesMap.get(user.id)
 
@@ -386,7 +415,7 @@ const addMessage = async (content: string, user: User) => {
     } catch {
     }
   } else if (user.id === ZHIPU.id) {
-    if (content === 'NEW') {
+    if (content === '[NEW]') {
       newMessage(user)
       return
     }
@@ -451,7 +480,7 @@ const addMessage = async (content: string, user: User) => {
         if (!i.trim()) {
           continue
         }
-        if (i === 'NEW') {
+        if (i === '[NEW]') {
           newMessage(user)
           continue
         }
@@ -884,7 +913,7 @@ const sendMessage = async () => {
           }
         }
 
-        window.electronAPI.sendMessage('chat', {from: USER, to: i.id, content: text, id: uuid})
+        window.electronAPI.sendMessage('chat', <MessageChat>{from: USER, to: i.id, data: text, id: uuid})
       })
     } else {
       mentions.forEach((i: any) => {
@@ -903,7 +932,7 @@ const sendMessage = async () => {
             })
           }
         }
-        window.electronAPI.sendMessage('chat', {from: USER, to: i.value, content: text, id: uuid})
+        window.electronAPI.sendMessage('chat', <MessageChat>{from: USER, to: i.value, data: text, id: uuid})
       })
     }
   }
@@ -978,7 +1007,7 @@ const reset = async () => {
 }
 
 const openWindow = async (id: string) => {
-  window.electronAPI?.sendMessage('open', {from: USER, to: id})
+  window.electronAPI?.sendMessage('open', <MessageOpen>{from: USER, to: id})
 }
 
 const newChat = async (id: string) => {

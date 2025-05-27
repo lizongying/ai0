@@ -6,11 +6,17 @@ import {fileURLToPath} from 'url'
 import Components from 'unplugin-vue-components/vite'
 import {AntDesignVueResolver} from 'unplugin-vue-components/resolvers'
 
+
+import {ASSISTANTS, USER} from './src/constants'
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 // https://vite.dev/config/
 export default defineConfig({
+    define: {
+        'process': {}
+    },
     plugins: [
         vue(),
         electron(!process.argv.includes('dev') ? [
@@ -23,14 +29,14 @@ export default defineConfig({
                 },
             },
             {
-                entry: `src/preload/me.ts`, vite: {
+                entry: `src/preload/${USER}.ts`, vite: {
                     build: {
                         outDir: 'dist/preload',
                         sourcemap: true,
                     },
                 },
             },
-        ].concat(['deepseek', 'doubao', 'kimi', 'zhida', 'tongyi', 'hunyuan', 'zhipu', 'mita', 'qingyan'].map(i => {
+        ].concat(Object.values(ASSISTANTS).filter(v => v.enable).map(v => v.id).map(i => {
             return [
                 {
                     entry: `src/preload/${i}.ts`, vite: {
@@ -59,7 +65,10 @@ export default defineConfig({
         }),
     ],
     resolve: {
-        alias: {'@': '/src'},
+        alias: {
+            '@': '/src',
+            'html-to-docx': resolve(__dirname, '/src/shared/html-to-docx.esm.js'),
+        },
     },
     build: !process.argv.includes('dev') ? {
         outDir: 'dist/home',

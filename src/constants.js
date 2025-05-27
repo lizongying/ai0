@@ -1,17 +1,5 @@
-const USER = 'me'
-
-
-interface Assistant {
-    id: string
-    link: string
-    name: string,
-    avatar: string,
-    desc: string,
-    accept: string,
-    enable: boolean
-}
-
-const ASSISTANTS: Record<string, Assistant> = {
+const USER = 'me';
+const ASSISTANTS = {
     DEEPSEEK: {
         id: 'deepseek',
         link: 'https://chat.deepseek.com/',
@@ -111,6 +99,5 @@ const ASSISTANTS: Record<string, Assistant> = {
         accept: '',
         enable: true
     },
-}
-
-export {USER, ASSISTANTS}
+};
+export { USER, ASSISTANTS };

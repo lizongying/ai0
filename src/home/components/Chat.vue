@@ -12,8 +12,10 @@ import {
 } from '@ant-design/icons-vue'
 import {getImageUrl} from '../utils.ts'
 import {Lang, translations} from '../../i18n.ts'
-
+import {utils, writeFile} from 'xlsx'
 import {message} from 'ant-design-vue'
+import HtmlToDocx from 'html-to-docx'
+import {minify} from 'html-minifier-terser'
 
 const [messageApi, contextHolder] = message.useMessage()
 
@@ -87,8 +89,8 @@ const messageContainerClass = (me: boolean): string => {
   return me ? 'message-container right' : 'message-container left'
 }
 
-const downloadTextFile = (content: string, filename = '') => {
-  const blob = new Blob([content], {type: 'text/plain'})
+const downloadTextFile = (content: string, filename: string = '', filetype: string = 'text/plain') => {
+  const blob = new Blob([content], {type: filetype})
 
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -103,7 +105,7 @@ const downloadTextFile = (content: string, filename = '') => {
 }
 
 const download = (md: string, title: string | undefined) => {
-  downloadTextFile(md, (title || md.split('\n')[0].slice(0, 10)) + '.txt')
+  downloadTextFile(md, (title || md.split('\n')[0].slice(0, 10)) + '.txt', 'text/plain')
   messageApi.info(t.value.downloaded)
 }
 
@@ -123,6 +125,62 @@ const copyAsDoc = async (md: string) => {
   messageApi.info(t.value.copied)
 }
 
+const downloadAsDoc = async (md: string, title: string | undefined) => {
+  const outerHTML = await markdown.render(md)
+  const fileName = (title || md.split('\n')[0].slice(0, 10)) + '.docx'
+
+  // downloadTextFile(outerHTML, (title || md.split('\n')[0].slice(0, 10)) + '.txt')
+
+  // const fullHtmlContent = `<!--<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body>${htmlContent.outerHTML}</body></html>-->`;
+
+  // const htmlString = `<!DOCTYPE html>
+  //   <html lang="en">
+  //       <head>
+  //           <meta charset="UTF-8" />
+  //           <title>Document</title>
+  //       </head>
+  //       <body>
+  //           ${outerHTML}
+  //       </body>
+  //   </html>`;
+  const htmlString = await minify(outerHTML, {
+    collapseWhitespace: true,
+  });
+  let blob = await HtmlToDocx(htmlString, null,
+      {
+        orientation: "landscape",
+        table: {
+          row: {
+            cantSplit: true,
+          },
+        },
+      },
+      "footer",) as Blob
+  // console.log('blob:', blob)
+
+  // const blob = new Blob([fileBuffer], {type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+
+//   const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word Document with JavaScript</title></head><body>";
+//   const postHtml = "</body></html>";
+//   const html = preHtml + outerHTML + postHtml;
+//
+// blob = new Blob(['\ufeff', html], {
+//     // type: 'application/msword'
+//     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" // .docx 的 MIME 类型
+//   });
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+
+  messageApi.info(t.value.downloaded)
+}
+
 const copyAsExcel = async (md: string) => {
   const outerHTML = await mdExcel.render(md)
   const type = 'text/html'
@@ -139,6 +197,27 @@ const copyAsExcel = async (md: string) => {
   messageApi.info(t.value.copied)
 }
 
+const messageRefs = ref<Array<HTMLDivElement | null>>([])
+
+const setMessageRef = (el: unknown, index: number) => {
+  if (el instanceof HTMLDivElement) {
+    messageRefs.value[index] = el
+  } else {
+    messageRefs.value[index] = null
+  }
+}
+
+const downloadAsExcel = async (index: number, md: string, title: string | undefined) => {
+  const filename = (title || md.split('\n')[0].slice(0, 10)) + '.xlsx'
+  const table = messageRefs.value[index]?.querySelector('table')
+  if (table) {
+    const wb = utils.table_to_book(table)
+    writeFile(wb, filename)
+    messageApi.info(t.value.downloaded)
+  } else {
+  }
+}
+
 const copyAsTxt = async (md: string) => {
   console.log('md', md)
   const txt = await mdPlaintext.render(md)
@@ -146,6 +225,12 @@ const copyAsTxt = async (md: string) => {
   console.log('txt:', txt)
   await navigator.clipboard.writeText(txt.replace(/\n+/g, '\n'))
   messageApi.info(t.value.copied)
+}
+
+const downloadAsTxt = async (md: string, title: string | undefined) => {
+  const outerHTML = await mdPlaintext.render(md)
+  downloadTextFile(outerHTML, (title || md.split('\n')[0].slice(0, 10)) + '.txt', 'text/plain')
+  messageApi.info(t.value.downloaded)
 }
 
 const copyAsMd = async (md: string) => {
@@ -207,7 +292,7 @@ const handleMouseOver = (index: number) => {
               </a-typography-text>
             </a-collapse-panel>
           </a-collapse>
-          <div v-html="message.html"></div>
+          <div v-html="message.html" :ref="(el) => setMessageRef(el, index)"></div>
           <a-space direction="vertical" v-if="message.suggest" style="margin-top: 1em;">
             <a-typography-text underline class="link" v-for="(item, index) in message.suggest"
                                :key="index" @click="suggest(item)">{{ item }}
@@ -220,8 +305,24 @@ const handleMouseOver = (index: number) => {
             <DeleteOutlined @click="delMessage(message.id||0)"/>
           </a-tooltip>
           <a-tooltip>
-            <template #title>{{ t.download }}</template>
+            <template #title>{{ t.downloadAsMd }}</template>
             <DownloadOutlined @click="download(message.content, message.title)"/>
+          </a-tooltip>
+          <a-tooltip>
+            <template #title>{{ t.downloadAsDoc }}</template>
+            <DownloadOutlined @click="downloadAsDoc(message.content, message.title)"/>
+          </a-tooltip>
+          <a-tooltip>
+            <template #title>{{ t.downloadAsExcel }}</template>
+            <DownloadOutlined @click="downloadAsExcel(index, message.content, message.title)"/>
+          </a-tooltip>
+          <a-tooltip>
+            <template #title>{{ t.downloadAsTxt }}</template>
+            <DownloadOutlined @click="downloadAsTxt(message.content, message.title)"/>
+          </a-tooltip>
+          <a-tooltip>
+            <template #title>{{ t.copyAsMd }}</template>
+            <FileMarkdownOutlined @click="copyAsMd(message.content)"/>
           </a-tooltip>
           <a-tooltip>
             <template #title>{{ t.copyAsDoc }}</template>
@@ -234,10 +335,6 @@ const handleMouseOver = (index: number) => {
           <a-tooltip>
             <template #title>{{ t.copyAsTxt }}</template>
             <FileTextOutlined @click="copyAsTxt(message.content)"/>
-          </a-tooltip>
-          <a-tooltip>
-            <template #title>{{ t.copyAsMd }}</template>
-            <FileMarkdownOutlined @click="copyAsMd(message.content)"/>
           </a-tooltip>
         </a-space>
         <div style="height: 21px;" v-if="message.finished && index!==activeRow">

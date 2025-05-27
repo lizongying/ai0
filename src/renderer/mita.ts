@@ -1,7 +1,7 @@
 import {ASSISTANTS, USER} from '../constants'
 
 const {MITA} = ASSISTANTS
-const user = MITA.id
+const assistant = MITA
 
 const hookRequest = () => {
     const originalFetch = window.fetch
@@ -16,20 +16,20 @@ const hookRequest = () => {
                         const decoder = new TextDecoder()
 
                         if (reader) {
-                            window.electronAPI.sendMessage('chat', {
-                                from: user,
+                            window.electronAPI.sendMessage('chat', <MessageChat>{
+                                from: assistant.id,
                                 to: USER,
-                                data: 'NEW',
+                                data: '[NEW]',
                             })
                             while (true) {
                                 const {done, value} = await reader.read()
                                 if (done) break
 
                                 const chunk = decoder.decode(value, {stream: true})
-                                console.log('Received chunk:', chunk)
+                                // console.log('Received chunk:', chunk)
 
-                                window.electronAPI.sendMessage('chat', {
-                                    from: user,
+                                window.electronAPI.sendMessage('chat', <MessageChat>{
+                                    from: assistant.id,
                                     to: USER,
                                     data: chunk,
                                 });
@@ -65,8 +65,8 @@ const hookRequest = () => {
                     if (thisArg.readyState === 3 || thisArg.readyState === 4) {
                         const data = thisArg.responseText.slice(thisArg.lastDataIndex || 0)
                         thisArg.lastDataIndex = thisArg.responseText.length
-                        window.electronAPI.sendMessage('chat', {
-                            from: user,
+                        window.electronAPI.sendMessage('chat', <MessageChat>{
+                            from: assistant.id,
                             to: USER,
                             data: data,
                         })
@@ -84,17 +84,17 @@ const hookRequest = () => {
             const instance = Reflect.construct(target, argumentsList, newTarget)
 
             instance.addEventListener('open', () => {
-                window.electronAPI.sendMessage('chat', {
-                    from: user,
+                window.electronAPI.sendMessage('chat', <MessageChat>{
+                    from: assistant.id,
                     to: USER,
-                    data: 'NEW',
+                    data: '[NEW]',
                 })
             })
 
             instance.addEventListener('message', function (e: any) {
                 console.log('e.data', e.data)
-                window.electronAPI.sendMessage('chat', {
-                    from: user,
+                window.electronAPI.sendMessage('chat', <MessageChat>{
+                    from: assistant.id,
                     to: USER,
                     data: e.data,
                 })

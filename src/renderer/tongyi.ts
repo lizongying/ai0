@@ -2,7 +2,7 @@ import {ASSISTANTS, USER} from '../constants'
 
 const {TONGYI} = ASSISTANTS
 
-const user = TONGYI.id
+const assistant = TONGYI
 const hookRequest = () => {
     const originalFetch = window.fetch
     window.fetch = new Proxy(originalFetch, {
@@ -24,10 +24,10 @@ const hookRequest = () => {
                                 if (done) break
 
                                 const chunk = decoder.decode(value, {stream: true})
-                                console.log('Received chunk:', chunk)
+                                // console.log('Received chunk:', chunk)
 
-                                window.electronAPI.sendMessage('chat', {
-                                    from: user,
+                                window.electronAPI.sendMessage('chat', <MessageChat>{
+                                    from: assistant.id,
                                     to: USER,
                                     data: chunk,
                                 })
@@ -43,8 +43,8 @@ const hookRequest = () => {
                             const recommendedQuestions = parsedData?.data?.recommendedQuestions
                             if (Array.isArray(recommendedQuestions) && recommendedQuestions.length > 0) {
                                 for (const recommend of recommendedQuestions) {
-                                    window.electronAPI.sendMessage('chat', {
-                                        from: user,
+                                    window.electronAPI.sendMessage('chat', <MessageChat>{
+                                        from: assistant.id,
                                         to: USER,
                                         data: `data: {"chat_prompt": "${recommend}"}`,
                                     })
@@ -90,8 +90,8 @@ const hookRequest = () => {
                             const recommendedQuestions = parsedData?.data?.recommendedQuestions
                             if (Array.isArray(recommendedQuestions) && recommendedQuestions.length > 0) {
                                 for (const recommend of recommendedQuestions) {
-                                    window.electronAPI.sendMessage('chat', {
-                                        from: user,
+                                    window.electronAPI.sendMessage('chat', <MessageChat>{
+                                        from: assistant.id,
                                         to: USER,
                                         data: `data: {"chat_prompt": "${recommend}"}`,
                                     })

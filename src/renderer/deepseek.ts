@@ -1,7 +1,7 @@
 import {ASSISTANTS, USER} from '../constants'
 
 const {DEEPSEEK} = ASSISTANTS
-const assistant = DEEPSEEK.id
+const assistant = DEEPSEEK
 
 const hookRequest = () => {
     const originalOpen = window.XMLHttpRequest.prototype.open
@@ -25,8 +25,8 @@ const hookRequest = () => {
                     if (thisArg.readyState === 3 || thisArg.readyState === 4) {
                         const data = thisArg.responseText.slice(thisArg.lastDataIndex || 0)
                         thisArg.lastDataIndex = thisArg.responseText.length
-                        window.electronAPI.sendMessage('chat', {
-                            from: assistant,
+                        window.electronAPI.sendMessage('chat', <MessageChat>{
+                            from: assistant.id,
                             to: USER,
                             data: data,
                         })

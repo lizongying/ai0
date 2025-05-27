@@ -1,7 +1,7 @@
 import {ASSISTANTS, USER} from '../constants'
 
 const {KIMI} = ASSISTANTS
-const assistant = KIMI.id
+const assistant = KIMI
 
 const hookRequest = () => {
     const originalFetch = window.fetch
@@ -23,16 +23,16 @@ const hookRequest = () => {
                                 if (done) break
 
                                 const chunk = decoder.decode(value, {stream: true})
-                                console.log('Received chunk:', chunk)
+                                // console.log('Received chunk:', chunk)
 
-                                window.electronAPI.sendMessage('chat', {
-                                    from: assistant,
+                                window.electronAPI.sendMessage('chat', <MessageChat>{
+                                    from: assistant.id,
                                     to: USER,
                                     data: chunk,
                                 })
                             }
-                            window.electronAPI.sendMessage('chat', {
-                                from: assistant,
+                            window.electronAPI.sendMessage('chat', <MessageChat>{
+                                from: assistant.id,
                                 to: USER,
                                 data: '[DONE]',
                             })

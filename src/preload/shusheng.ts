@@ -1,35 +1,53 @@
-import {USER, ASSISTANTS} from '../constants'
+import {USER, ASSISTANTS} from '../constants.ts'
 
 const {ipcRenderer, contextBridge} = require('electron')
 import {translations} from '../i18n'
 import {Markdown} from '../markdown.ts'
 
-const {ZHIPU} = ASSISTANTS
+const {SHUSHENG} = ASSISTANTS
 const user = USER
-const assistant = ZHIPU
+const assistant = SHUSHENG
 let t = translations.hant
 
 const lineColor = 'currentColor'
 const fullColor = 'none'
-const inputSelector = '#chat-input'
+
+const inputSelector = 'textarea[rows]'
+const buttonSelector = 'div[class*="_send"]'
 
 const chat = (msg: String) => {
     ipcRenderer.send('chat', <MessageChat>{id: '', from: assistant.id, to: user, data: msg})
 }
 
-ipcRenderer.on('chat', (_: any, message: MessageChat) => {
+ipcRenderer.on('chat', async (_: any, message: MessageChat) => {
     console.log('Received from chat:', message)
     const input = document.querySelector(inputSelector) as HTMLTextAreaElement
     input.focus()
     input.value = ''
     document.execCommand('insertText', false, message.data)
-    const button = document.querySelector('#send-message-button');
-    setTimeout(() => {
-        (button as HTMLElement).click()
-    }, 500)
+    const button = document.querySelector(buttonSelector) as HTMLButtonElement
+    await observerChat(button)
 })
 
-contextBridge.exposeInMainWorld('API', {
+ipcRenderer.on('file', (_: any, message: MessageFile) => {
+    console.log('Received from file:', message)
+    return
+
+    const blob = new Blob([message.fileData], {type: message.fileType})
+    const file = new File([blob], message.fileName, {
+        type: message.fileType,
+        lastModified: new Date().getTime()
+    })
+
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(file)
+
+    const input = document.querySelector('[type="file"]') as HTMLInputElement
+    input.files = dataTransfer.files
+    input.dispatchEvent(new Event('change', {bubbles: true}))
+})
+
+contextBridge.exposeInMainWorld('electronAPI', {
     sendMessage: (channel: any, data: any) => {
         ipcRenderer.send(channel, data)
     },
@@ -40,16 +58,7 @@ contextBridge.exposeInMainWorld('API', {
 
 document.addEventListener('DOMContentLoaded', () => {
     observerButtons()
-    const input = document.querySelector(inputSelector)
-    if (input) {
-        if (!ready) {
-            ipcRenderer.send('status', <MessageStatus>{from: assistant.id, status: 'ready'})
-            ready = true
-        }
-    } else {
-        observerInput()
-    }
-
+    observerInput()
     const sheet = new CSSStyleSheet()
     sheet.replaceSync(`
     .ai0>svg {
@@ -58,6 +67,39 @@ document.addEventListener('DOMContentLoaded', () => {
     `)
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
 })
+
+const observerChat = async (button: HTMLButtonElement) => {
+    const observer = new MutationObserver((mutationsList) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                if (!button.className.includes('disabled')) {
+                    observer.disconnect()
+                    clearInterval(interval)
+                    button.click()
+                }
+            }
+        }
+    })
+
+    observer.observe(button, {
+        attributes: true,
+        attributeFilter: ['class']
+    })
+
+    const interval = setInterval(() => {
+        const button = document.querySelector(buttonSelector) as HTMLButtonElement
+        if (!button.className.includes('disabled')) {
+            observer.disconnect()
+            clearInterval(interval)
+            button.click()
+        }
+    }, 100)
+
+    setTimeout(() => {
+        observer.disconnect()
+        clearInterval(interval)
+    }, 60_000)
+}
 
 const observerButtons = () => {
     const observer = new MutationObserver((mutationsList) => {
@@ -107,9 +149,9 @@ const addButton = (buttons: NodeListOf<Element>) => {
             item.appendChild(doc)
             addPopup(doc, t.copyAsDoc)
 
-            // const excel = addExcel()
-            // item.appendChild(excel)
-            // addPopup(excel, '導出為excel')
+            const excel = addExcel()
+            item.appendChild(excel)
+            addPopup(excel, t.copyAsExcel)
 
             // const pdf = addPdf()
             // item.appendChild(pdf)
@@ -139,15 +181,16 @@ const addDoc = () => {
     return div
 }
 
-// const addExcel = () => {
-//     let div = document.createElement('div')
-//     div.className = 'ds-icon-button'
-//     div.setAttribute('tabindex', '0')
-//     div.style.setProperty('--ds-icon-button-text-color', '#CDD4DF')
-//     div.style.setProperty('--ds-icon-button-size', '20px')
-//     div.innerHTML = `<div class="ds-icon ai0" style="font-size: 20px; width: 20px; height: 20px;"><svg width="20" height="20" viewBox="0 0 48 48" fill="${fullColor}" xmlns="http://www.w3.org/2000/svg"><path d="M8 15V6C8 4.89543 8.89543 4 10 4H38C39.1046 4 40 4.89543 40 6V42C40 43.1046 39.1046 44 38 44H10C8.89543 44 8 43.1046 8 42V33" stroke="${lineColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M31 15H34" stroke="${lineColor}" stroke-width="4" stroke-linecap="round"/><path d="M28 23H34" stroke="${lineColor}" stroke-width="4" stroke-linecap="round"/><path d="M28 31H34" stroke="${lineColor}" stroke-width="4" stroke-linecap="round"/><rect x="4" y="15" width="18" height="18" fill="${fullColor}" stroke="${lineColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 21L16 27" stroke="${lineColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 21L10 27" stroke="${lineColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`
-//     return div
-// }
+const addExcel = () => {
+    let div = document.createElement('div')
+    div.className = 'ds-icon-button'
+    div.setAttribute('ai0-excel', '')
+    div.setAttribute('tabindex', '0')
+    div.style.setProperty('--ds-icon-button-text-color', '#CDD4DF')
+    div.style.setProperty('--ds-icon-button-size', '20px')
+    div.innerHTML = `<div class="ds-icon ai0" style="font-size: 20px; width: 20px; height: 20px;"><svg width="20" height="20" viewBox="0 0 48 48" fill="${fullColor}" xmlns="http://www.w3.org/2000/svg"><path d="M8 15V6C8 4.89543 8.89543 4 10 4H38C39.1046 4 40 4.89543 40 6V42C40 43.1046 39.1046 44 38 44H10C8.89543 44 8 43.1046 8 42V33" stroke="${lineColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M31 15H34" stroke="${lineColor}" stroke-width="4" stroke-linecap="round"/><path d="M28 23H34" stroke="${lineColor}" stroke-width="4" stroke-linecap="round"/><path d="M28 31H34" stroke="${lineColor}" stroke-width="4" stroke-linecap="round"/><rect x="4" y="15" width="18" height="18" fill="${fullColor}" stroke="${lineColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 21L16 27" stroke="${lineColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 21L10 27" stroke="${lineColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`
+    return div
+}
 
 // const addPdf = () => {
 //     let div = document.createElement('div')
@@ -235,6 +278,36 @@ const addPopup = (ele: Element, name: string) => {
             }
         } else if (ele.hasAttribute('ai0-doc')) {
             let markdownElement = ele.parentElement?.parentElement?.parentElement?.querySelector('.ds-markdown')
+            if (markdownElement) {
+                const clonedElement = markdownElement.cloneNode(true) as Element
+
+                function traverseChildren(element: Element) {
+                    element.removeAttribute('class')
+                    element.removeAttribute('style')
+                    element.childNodes.forEach(i => {
+                        if (i instanceof Element) {
+                            traverseChildren(i)
+                        }
+                    })
+                }
+
+                traverseChildren(clonedElement)
+
+                const outerHTML = clonedElement.outerHTML
+                const type = 'text/html'
+                const clipboardItemData = {
+                    [type]: new Blob([outerHTML], {type}),
+                };
+                try {
+                    console.log('html:', outerHTML)
+                    const clipboardItem = new ClipboardItem(clipboardItemData)
+                    await navigator.clipboard.write([clipboardItem])
+                } catch (err) {
+                    console.error(err)
+                }
+            }
+        } else if (ele.hasAttribute('ai0-excel')) {
+            let markdownElement = ele.parentElement?.parentElement?.parentElement?.querySelector('.ds-markdown table')
             if (markdownElement) {
                 const clonedElement = markdownElement.cloneNode(true) as Element
 

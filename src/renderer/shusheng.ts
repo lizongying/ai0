@@ -1,8 +1,7 @@
 import {ASSISTANTS, USER} from '../constants'
 
-const {ZHIPU} = ASSISTANTS
-
-const assistant = ZHIPU
+const {SHUSHENG} = ASSISTANTS
+const assistant = SHUSHENG
 
 const hookRequest = () => {
     const originalFetch = window.fetch
@@ -12,14 +11,12 @@ const hookRequest = () => {
                 const response = Reflect.apply(target, thisArg, argumentsList)
                 return response.then(async (response: Response) => {
                     const clonedResponse = response.clone()
-                    if (clonedResponse.url.includes('chat/completions')) {
-                        console.log('Response intercepted:', clonedResponse.url)
-
+                    if (clonedResponse.url.includes('/puyu/chats/')) {
                         const reader = clonedResponse.body?.getReader()
                         const decoder = new TextDecoder()
 
                         if (reader) {
-                            window.API.sendMessage('chat', <MessageChat>{
+                            window.electronAPI.sendMessage('chat', <MessageChat>{
                                 from: assistant.id,
                                 to: USER,
                                 data: '[NEW]',
@@ -31,19 +28,24 @@ const hookRequest = () => {
                                 const chunk = decoder.decode(value, {stream: true})
                                 // console.log('Received chunk:', chunk)
 
-                                window.API.sendMessage('chat', <MessageChat>{
+                                window.electronAPI.sendMessage('chat', <MessageChat>{
                                     from: assistant.id,
                                     to: USER,
                                     data: chunk,
-                                });
+                                })
                             }
+                            window.electronAPI.sendMessage('chat', <MessageChat>{
+                                from: assistant.id,
+                                to: USER,
+                                data: '[DONE]',
+                            })
                         }
                     }
 
                     return response
                 })
-            } catch (error) {
-                console.error('Fetch error:', error)
+            } catch (e) {
+                console.log('error:', e)
             }
         }
     })

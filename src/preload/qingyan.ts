@@ -1,29 +1,30 @@
+import {USER, ASSISTANTS} from '../constants'
+
 const {ipcRenderer, contextBridge} = require('electron')
 import {translations} from '../i18n'
 import {Markdown} from '../markdown.ts'
 
-import {ASSISTANTS} from '../constants'
 
 const {QINGYAN} = ASSISTANTS
-
+const user = USER
+const assistant = QINGYAN
 let t = translations.hant
 
 const lineColor = 'currentColor'
 const fullColor = 'none'
-const user = QINGYAN.id
 const inputSelector = 'textarea'
 
 const chat = (msg: String) => {
-    ipcRenderer.send('chat', {from: user, to: 'me', data: msg})
+    ipcRenderer.send('chat', <MessageChat>{id: '', from: assistant.id, to: user, data: msg})
 }
 
-ipcRenderer.on('chat', (_: any, message: any) => {
+ipcRenderer.on('chat', (_: any, message: MessageChat) => {
     console.log('Received from chat:', message)
 
     const input = document.querySelector(inputSelector) as HTMLTextAreaElement
     input.focus()
     input.value = ''
-    document.execCommand('insertText', false, message.content)
+    document.execCommand('insertText', false, message.data)
     const button = document.querySelector('.enter');
     setTimeout(() => {
         (button as HTMLElement).click()
@@ -44,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.querySelector(inputSelector)
     if (input) {
         if (!ready) {
-            ipcRenderer.send('status', {from: user, status: 'ready'})
+            ipcRenderer.send('status', <MessageStatus>{from: assistant.id, status: 'ready'})
             ready = true
         }
     } else {
@@ -86,7 +87,7 @@ const observerInput = () => {
                 const input = document.querySelector(inputSelector)
                 if (input) {
                     if (!ready) {
-                        ipcRenderer.send('status', {from: user, status: 'ready'})
+                        ipcRenderer.send('status', <MessageStatus>{from: assistant.id, status: 'ready'})
                         ready = true
                     }
                     observer.disconnect()
@@ -106,7 +107,7 @@ const addButton = (buttons: NodeListOf<Element>) => {
         if (!item.hasAttribute('html') && item.childElementCount === 4) {
             const doc = addDoc()
             item.appendChild(doc)
-            addPopup(doc, t.doc)
+            addPopup(doc, t.copyAsDoc)
 
             // const excel = addExcel()
             // item.appendChild(excel)
@@ -118,11 +119,11 @@ const addButton = (buttons: NodeListOf<Element>) => {
 
             const txt = addTxt()
             item.appendChild(txt)
-            addPopup(txt, t.txt)
+            addPopup(txt, t.copyAsTxt)
 
             const download = addDownload()
             item.appendChild(download)
-            addPopup(download, t.download)
+            addPopup(download, t.downloadAsMd)
 
             item.setAttribute('html', '')
         }
