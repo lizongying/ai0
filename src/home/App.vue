@@ -31,11 +31,11 @@ import {getImageUrl, getTimestamp, parseText} from './utils.ts'
 import {Lang, translations} from '../i18n'
 import {DatabaseManager} from './db.ts'
 
-import {ASSISTANTS, USER} from '../constants'
+import {ASSISTANTS, USER} from '../constants.ts'
 
 const [messageApi, contextHolder] = message.useMessage()
 
-const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN, SHUSHENG} = ASSISTANTS
+const {DEEPSEEK, DOUBAO, KIMI, TONGYI, HUNYUAN, ZHIPU, MITA, QINGYAN, SHUSHENG, ZHIDA} = ASSISTANTS
 
 const t = computed(() => {
   switch (settings.lang) {
@@ -309,6 +309,34 @@ const addMessage = async (content: string, user: User) => {
       currentMessage.content = content
       await finishedMessage(currentMessage)
     }
+  } else if (user.id === ZHIDA.id) {
+    if (content === '[NEW]') {
+      newMessage(user)
+      return
+    }
+
+    if (content === '[DONE]') {
+      const currentMessage = messagesMap.get(user.id)
+      await finishedMessage(currentMessage)
+      return
+    }
+
+    try {
+      const t = JSON.parse(content.trim())
+      for (const d of t) {
+        console.log('d', d)
+
+        // const currentMessage = messagesMap.get(user.id)
+        //
+        // if (d?.response && currentMessage) {
+        //   currentMessage.content = d?.response
+        //   messages.push({} as any)
+        //   messages.pop()
+        // }
+      }
+    } catch (e) {
+      console.error(e)
+    }
   } else if (user.id === SHUSHENG.id) {
     if (content === '[NEW]') {
       newMessage(user)
@@ -341,7 +369,7 @@ const addMessage = async (content: string, user: User) => {
           messages.pop()
         }
       }
-    } catch(e) {
+    } catch (e) {
       console.error(e)
     }
   } else if (user.id === MITA.id) {
@@ -373,7 +401,8 @@ const addMessage = async (content: string, user: User) => {
           messages.pop()
         }
       }
-    } catch {
+    } catch (e) {
+      console.error(e)
     }
   } else if (user.id === QINGYAN.id) {
     if (content === '[NEW]') {
@@ -412,7 +441,8 @@ const addMessage = async (content: string, user: User) => {
           }
         }
       }
-    } catch {
+    } catch (e) {
+      console.error(e)
     }
   } else if (user.id === ZHIPU.id) {
     if (content === '[NEW]') {
@@ -471,7 +501,8 @@ const addMessage = async (content: string, user: User) => {
           messages.pop()
         }
       }
-    } catch {
+    } catch (e) {
+      console.error(e)
     }
   } else if (user.id === HUNYUAN.id) {
     let t = content.trim().split('\n\n')
@@ -522,7 +553,8 @@ const addMessage = async (content: string, user: User) => {
           }
         }
       }
-    } catch {
+    } catch (e) {
+      console.error(e)
     }
   } else if (user.id === TONGYI.id) {
     if (!content.startsWith('data: ')) {
@@ -587,7 +619,8 @@ const addMessage = async (content: string, user: User) => {
           }
         }
       }
-    } catch {
+    } catch (e) {
+      console.error(e)
     }
   } else if (user.id === KIMI.id) {
     try {
@@ -637,7 +670,8 @@ const addMessage = async (content: string, user: User) => {
           }
         }
       }
-    } catch {
+    } catch (e) {
+      console.error(e)
     }
   } else if (user.id === DOUBAO.id) {
     try {
@@ -691,7 +725,8 @@ const addMessage = async (content: string, user: User) => {
           }
         }
       }
-    } catch {
+    } catch (e) {
+      console.error(e)
     }
   } else if (user.id === DEEPSEEK.id) {
     const rs = parseText(content)
@@ -759,7 +794,6 @@ const addMessage = async (content: string, user: User) => {
         }
       }
     }
-
   }
   await scrollToBottom()
 }

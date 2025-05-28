@@ -1,4 +1,4 @@
-import {ASSISTANTS, USER} from '../constants'
+import {ASSISTANTS, USER} from '../constants.ts'
 
 const {QINGYAN} = ASSISTANTS
 
@@ -49,4 +49,3 @@ const hookRequest = () => {
 }
 
 hookRequest()
-console.log('hookRequest')

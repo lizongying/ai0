@@ -14,7 +14,7 @@ import {getImageUrl} from '../utils.ts'
 import {Lang, translations} from '../../i18n.ts'
 import {utils, writeFile} from 'xlsx'
 import {message} from 'ant-design-vue'
-import HtmlToDocx from 'html-to-docx'
+import HtmlToDocx from 'web-docx'
 import {minify} from 'html-minifier-terser'
 
 const [messageApi, contextHolder] = message.useMessage()
@@ -129,45 +129,18 @@ const downloadAsDoc = async (md: string, title: string | undefined) => {
   const outerHTML = await markdown.render(md)
   const fileName = (title || md.split('\n')[0].slice(0, 10)) + '.docx'
 
-  // downloadTextFile(outerHTML, (title || md.split('\n')[0].slice(0, 10)) + '.txt')
-
-  // const fullHtmlContent = `<!--<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body>${htmlContent.outerHTML}</body></html>-->`;
-
-  // const htmlString = `<!DOCTYPE html>
-  //   <html lang="en">
-  //       <head>
-  //           <meta charset="UTF-8" />
-  //           <title>Document</title>
-  //       </head>
-  //       <body>
-  //           ${outerHTML}
-  //       </body>
-  //   </html>`;
   const htmlString = await minify(outerHTML, {
     collapseWhitespace: true,
-  });
-  let blob = await HtmlToDocx(htmlString, null,
-      {
-        orientation: "landscape",
-        table: {
-          row: {
-            cantSplit: true,
-          },
-        },
+  })
+
+  let blob = await HtmlToDocx(htmlString, {
+    orientation: 'portrait',
+    table: {
+      row: {
+        cantSplit: true,
       },
-      "footer",) as Blob
-  // console.log('blob:', blob)
-
-  // const blob = new Blob([fileBuffer], {type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-
-//   const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word Document with JavaScript</title></head><body>";
-//   const postHtml = "</body></html>";
-//   const html = preHtml + outerHTML + postHtml;
-//
-// blob = new Blob(['\ufeff', html], {
-//     // type: 'application/msword'
-//     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" // .docx 的 MIME 类型
-//   });
+    },
+  }) as Blob
 
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -178,6 +151,7 @@ const downloadAsDoc = async (md: string, title: string | undefined) => {
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 
+  // downloadTextFile(outerHTML, fileName)
   messageApi.info(t.value.downloaded)
 }
 

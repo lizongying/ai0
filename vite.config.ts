@@ -66,8 +66,9 @@ export default defineConfig({
     ],
     resolve: {
         alias: {
-            '@': '/src',
-            'html-to-docx': resolve(__dirname, '/src/shared/html-to-docx.esm.js'),
+            '@': 'src',
+            // 'html-to-docx': resolve(__dirname, 'src/shared/web-docx.esm.js'),
+            // 'html-to-docx': resolve(__dirname, '../html-to-docx/dist/web-docx.esm.js'),
         },
     },
     build: !process.argv.includes('dev') ? {

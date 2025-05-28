@@ -1,37 +1,37 @@
-import {ASSISTANTS, USER} from '../constants'
+import {ASSISTANTS, USER} from '../constants.ts'
 
 const {ZHIDA} = ASSISTANTS
 
 const assistant = ZHIDA
+let messageId = ''
 const hookRequest = () => {
     const originalFetch = window.fetch
     window.fetch = new Proxy(originalFetch, {
         apply: function (target, thisArg, argumentsList) {
             try {
+                console.log('target', target)
                 const response = Reflect.apply(target, thisArg, argumentsList)
                 return response.then(async (response: Response) => {
                     const clonedResponse = response.clone()
-                    if (clonedResponse.url.includes('completion/stream')) {
+                    console.log('clonedResponse.url', clonedResponse.url)
+                    if (clonedResponse.url.includes('ai_chat/polling_message_v2')) {
                         console.log('Response intercepted:', clonedResponse.url)
-
-                        const reader = clonedResponse.body?.getReader()
-                        const decoder = new TextDecoder()
-
-                        if (reader) {
-                            while (true) {
-                                const {done, value} = await reader.read()
-                                if (done) break
-
-                                const chunk = decoder.decode(value, {stream: true})
-                                // console.log('Received chunk:', chunk)
-
-                                window.electronAPI.sendMessage('chat', <MessageChat>{
-                                    from: assistant.id,
-                                    to: USER,
-                                    data: chunk,
-                                });
-                            }
+                        const currentUrl = new URL(clonedResponse.url)
+                        const newMessageId = currentUrl.searchParams.get('message_id') || ''
+                        if (newMessageId != messageId) {
+                            window.electronAPI.sendMessage('chat', <MessageChat>{
+                                from: assistant.id,
+                                to: USER,
+                                data: '[NEW]',
+                            })
+                            messageId = newMessageId
                         }
+
+                        window.electronAPI.sendMessage('chat', <MessageChat>{
+                            from: assistant.id,
+                            to: USER,
+                            data: await clonedResponse.text(),
+                        })
                     }
 
                     return response
@@ -41,7 +41,53 @@ const hookRequest = () => {
             }
         }
     })
+
+    const originalOpen = window.XMLHttpRequest.prototype.open
+    window.XMLHttpRequest.prototype.open = new Proxy(originalOpen, {
+        apply: function (target, thisArg, argumentsList) {
+            const [, url] = argumentsList
+            thisArg._requestUrl = url
+            return Reflect.apply(target, thisArg, argumentsList)
+        },
+    })
+
+    const originalSend = XMLHttpRequest.prototype.send
+    XMLHttpRequest.prototype.send = new Proxy(originalSend, {
+        apply: (target, thisArg, argumentsList) => {
+            console.log('thisArg._requestUrl', thisArg._requestUrl)
+            if (thisArg._requestUrl.includes('ai_chat/polling_message_v2')) {
+                const originalOnReadyStateChange = thisArg.onreadystatechange
+                thisArg.onreadystatechange = () => {
+                    if (originalOnReadyStateChange) {
+                        originalOnReadyStateChange.apply(thisArg)
+                    }
+                    if (thisArg.readyState === 3 || thisArg.readyState === 4) {
+                        try {
+                            const currentUrl = new URL(thisArg._requestUrl)
+                            const newMessageId = currentUrl.searchParams.get('message_id') || ''
+                            if (newMessageId != messageId) {
+                                window.electronAPI.sendMessage('chat', <MessageChat>{
+                                    from: assistant.id,
+                                    to: USER,
+                                    data: '[NEW]',
+                                })
+                                messageId = newMessageId
+                            }
+
+                            window.electronAPI.sendMessage('chat', <MessageChat>{
+                                from: assistant.id,
+                                to: USER,
+                                data: thisArg.responseText,
+                            })
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    }
+                }
+            }
+            return Reflect.apply(target, thisArg, argumentsList)
+        },
+    })
 }
 
 hookRequest()
-console.log('hookRequest')

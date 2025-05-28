@@ -1,4 +1,4 @@
-import {USER, ASSISTANTS} from '../constants'
+import {USER, ASSISTANTS} from '../constants.ts'
 
 const {ipcRenderer, contextBridge} = require('electron')
 import {translations} from '../i18n'
@@ -13,23 +13,43 @@ let t = translations.hant
 const lineColor = 'currentColor'
 const fullColor = 'none'
 const inputSelector = 'textarea'
+const buttonSelector = '.enter_icon'
 
 const chat = (msg: String) => {
     ipcRenderer.send('chat', <MessageChat>{id: '', from: assistant.id, to: user, data: msg})
 }
 
-ipcRenderer.on('chat', (_: any, message: MessageChat) => {
+ipcRenderer.on('chat', async (_: any, message: MessageChat) => {
     console.log('Received from chat:', message)
 
     const input = document.querySelector(inputSelector) as HTMLTextAreaElement
     input.focus()
     input.value = ''
     document.execCommand('insertText', false, message.data)
-    const button = document.querySelector('.enter');
-    setTimeout(() => {
-        (button as HTMLElement).click()
-    }, 500)
+    const button = document.querySelector(buttonSelector) as HTMLButtonElement
+    await observerChat(button)
 })
+
+ipcRenderer.on('file', (_: any, message: MessageFile) => {
+    console.log('Received from file:', message)
+
+    const blob = new Blob([message.fileData], {type: message.fileType})
+    const file = new File([blob], message.fileName, {
+        type: message.fileType,
+        lastModified: new Date().getTime()
+    })
+
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(file)
+
+    const input = document.querySelector('[type="file"]') as HTMLInputElement
+    input.files = dataTransfer.files
+    input.dispatchEvent(new Event('change', {bubbles: true}))
+})
+
+const simulateMouseDown = (element: HTMLButtonElement) => {
+    element.dispatchEvent(new MouseEvent('mousedown'))
+}
 
 contextBridge.exposeInMainWorld('electronAPI', {
     sendMessage: (channel: any, data: any) => {
@@ -60,6 +80,39 @@ document.addEventListener('DOMContentLoaded', () => {
     `)
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
 })
+
+const observerChat = async (button: HTMLButtonElement) => {
+    const observer = new MutationObserver((mutationsList) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                if (!button.className.includes('empty')) {
+                    observer.disconnect()
+                    clearInterval(interval)
+                    simulateMouseDown(button)
+                }
+            }
+        }
+    })
+
+    observer.observe(button, {
+        attributes: true,
+        attributeFilter: ['class']
+    })
+
+    const interval = setInterval(() => {
+        const button = document.querySelector(buttonSelector) as HTMLButtonElement
+        if (!button.className.includes('empty')) {
+            observer.disconnect()
+            clearInterval(interval)
+            simulateMouseDown(button)
+        }
+    }, 100)
+
+    setTimeout(() => {
+        observer.disconnect()
+        clearInterval(interval)
+    }, 60_000)
+}
 
 const observerButtons = () => {
     const observer = new MutationObserver((mutationsList) => {

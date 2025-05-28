@@ -11,25 +11,23 @@ let t = translations.hant
 
 const lineColor = 'currentColor'
 const fullColor = 'none'
-const inputSelector = '.public-DraftEditor-content'
+const inputSelector = '[contenteditable]'
+const buttonSelector = 'div[style*="border-radius: 21px;"]'
 
 const chat = (msg: String) => {
     ipcRenderer.send('chat', <MessageChat>{id: '', from: assistant.id, to: user, data: msg})
 }
 
-ipcRenderer.on('chat', (_: any, message: MessageChat) => {
+ipcRenderer.on('chat', async (_: any, message: MessageChat) => {
     console.log('Received from chat:', message)
     const input = document.querySelector(inputSelector) as HTMLTextAreaElement
 
-    input.textContent = ''
+    // input.textContent = ''
     input.focus()
-    input.insertAdjacentText('beforeend', message.data)
-    // document.execCommand('insertText', false, message.content)
-    const buttons = document.querySelectorAll('svg[width="20"]');
-
-    setTimeout(() => {
-        (buttons[buttons.length - 1] as HTMLElement).parentElement?.click()
-    }, 500)
+    // input.insertAdjacentText('beforeend', message.data)
+    document.execCommand('insertText', false, message.data)
+    const button = document.querySelector(buttonSelector) as HTMLButtonElement
+    await observerChat(button)
 })
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -52,6 +50,39 @@ document.addEventListener('DOMContentLoaded', () => {
     `)
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
 })
+
+const observerChat = async (button: HTMLButtonElement) => {
+    const observer = new MutationObserver((mutationsList) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                if (button.style.backgroundColor === 'rgb(90, 77, 248)') {
+                    observer.disconnect()
+                    clearInterval(interval)
+                    button.click()
+                }
+            }
+        }
+    })
+
+    observer.observe(button, {
+        attributes: true,
+        attributeFilter: ['style']
+    })
+
+    const interval = setInterval(() => {
+        const button = document.querySelector(buttonSelector) as HTMLButtonElement
+        if (button.style.backgroundColor === 'rgb(90, 77, 248)') {
+            observer.disconnect()
+            clearInterval(interval)
+            button.click()
+        }
+    }, 100)
+
+    setTimeout(() => {
+        observer.disconnect()
+        clearInterval(interval)
+    }, 60_000)
+}
 
 const observerButtons = () => {
     const observer = new MutationObserver((mutationsList) => {

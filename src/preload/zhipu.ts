@@ -1,4 +1,4 @@
-import {USER, ASSISTANTS} from '../constants'
+import {USER, ASSISTANTS} from '../constants.ts'
 
 const {ipcRenderer, contextBridge} = require('electron')
 import {translations} from '../i18n'

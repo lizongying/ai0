@@ -1,4 +1,4 @@
-import {ASSISTANTS, USER} from '../constants'
+import {ASSISTANTS, USER} from '../constants.ts'
 
 const {SHUSHENG} = ASSISTANTS
 const assistant = SHUSHENG
