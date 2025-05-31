@@ -5,7 +5,6 @@ import {translations} from '../i18n'
 import {Markdown} from '../markdown.ts'
 
 const {ZHIDA} = ASSISTANTS
-const user = USER
 const assistant = ZHIDA
 let t = translations.hant
 
@@ -14,12 +13,15 @@ const fullColor = 'none'
 const inputSelector = '[contenteditable]'
 const buttonSelector = 'div[style*="border-radius: 21px;"]'
 
+let from = USER
+
 const chat = (msg: String) => {
-    ipcRenderer.send('chat', <MessageChat>{id: '', from: assistant.id, to: user, data: msg})
+    ipcRenderer.send('chat', <MessageChat>{id: '', from: assistant.id, to: from, data: msg})
 }
 
 ipcRenderer.on('chat', async (_: any, message: MessageChat) => {
     console.log('Received from chat:', message)
+    from = message.from
     const input = document.querySelector(inputSelector) as HTMLTextAreaElement
 
     // input.textContent = ''
@@ -36,6 +38,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     onMessage: (channel: any, callback: any) => {
         ipcRenderer.on(channel, (_: any, ...args: any[]) => callback(...args))
+    },
+    from: () => {
+        return from
     },
 })
 

@@ -25,13 +25,13 @@ const hookRequest = () => {
 
                                 window.electronAPI.sendMessage('chat', <MessageChat>{
                                     from: assistant.id,
-                                    to: USER,
+                                    to: window.electronAPI.from() || USER,
                                     data: chunk,
                                 })
                             }
                             window.electronAPI.sendMessage('chat', <MessageChat>{
                                 from: assistant.id,
-                                to: USER,
+                                to: window.electronAPI.from() || USER,
                                 data: '[DONE]',
                             })
                         }

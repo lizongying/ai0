@@ -11,6 +11,15 @@ interface Assistant {
     enable: boolean
 }
 
+interface Group {
+    id: string
+    users: Assistant[],
+    name: string,
+    avatar: string,
+    desc: string,
+    enable: boolean
+}
+
 const ASSISTANTS: Record<string, Assistant> = {
     DEEPSEEK: {
         id: 'deepseek',
@@ -113,4 +122,15 @@ const ASSISTANTS: Record<string, Assistant> = {
     },
 }
 
-export {USER, ASSISTANTS}
+const GROUPS: Record<string, Group> = {
+    ALL: {
+        id: 'all',
+        users: Object.values(ASSISTANTS),
+        name: 'ALL',
+        avatar: '',
+        desc: 'All of Assistants',
+        enable: true
+    },
+}
+
+export {USER, ASSISTANTS, GROUPS}

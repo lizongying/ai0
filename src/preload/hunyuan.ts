@@ -5,7 +5,6 @@ import {translations} from '../i18n'
 import {Markdown} from '../markdown.ts'
 
 const {HUNYUAN} = ASSISTANTS
-const user = USER
 const assistant = HUNYUAN
 let t = translations.hant
 
@@ -13,12 +12,15 @@ const lineColor = 'currentColor'
 const fullColor = 'none'
 const inputSelector = '.message-sender-textarea>.textarea-area>textarea[autofocus="autofocus"]'
 
+let from = USER
+
 const chat = (msg: String) => {
-    ipcRenderer.send('chat', <MessageChat>{id: '', from: assistant.id, to: user, data: msg})
+    ipcRenderer.send('chat', <MessageChat>{id: '', from: assistant.id, to: from, data: msg})
 }
 
 ipcRenderer.on('chat', (_: any, message: MessageChat) => {
     console.log('Received from chat:', message)
+    from = message.from
     const home = document.querySelector('.t2t-home') as HTMLTextAreaElement
     const index = window.getComputedStyle(home).display === 'none' ? 1 : 0
 
@@ -38,6 +40,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     onMessage: (channel: any, callback: any) => {
         ipcRenderer.on(channel, (_: any, ...args: any[]) => callback(...args))
+    },
+    from: () => {
+        return from
     },
 })
 

@@ -27,7 +27,7 @@ const hookRequest = () => {
                         thisArg.lastDataIndex = thisArg.responseText.length
                         window.electronAPI.sendMessage('chat', <MessageChat>{
                             from: assistant.id,
-                            to: USER,
+                            to: window.electronAPI.from() || USER,
                             data: data,
                         })
                     }

@@ -3,7 +3,7 @@ import path from 'path'
 import {fileURLToPath} from 'url'
 import {join} from 'node:path'
 import {readFileSync} from 'node:fs'
-import {ASSISTANTS, USER} from '../constants.ts'
+import {ASSISTANTS, GROUPS, USER} from '../constants.ts'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -32,7 +32,7 @@ const createMe = (headless: boolean): BrowserWindow => {
     } else {
         win.loadFile(path.join(__dirname, '../home/index.html')).then()
     }
-    // win.webContents.openDevTools()
+    win.webContents.openDevTools()
     return win
 }
 
@@ -58,7 +58,7 @@ const create = (name: string, url: string, headless: boolean) => {
             .executeJavaScript(readFileSync(join(__dirname, `../renderer/${name}.js`), 'utf-8'))
             .then()
     })
-    // win.webContents.openDevTools()
+    win.webContents.openDevTools()
     return win
 }
 
@@ -158,7 +158,11 @@ app.whenReady().then(() => {
     openAll()
 
     ipcMain.on('chat', (_, message: MessageChat) => {
-        windows.get(message.to)?.window?.webContents.send('chat', message)
+        let to = message.to
+        if (to === GROUPS.ALL.id) {
+            to = USER
+        }
+        windows.get(to)?.window?.webContents.send('chat', message)
     })
 
     ipcMain.on('file', (_, message: MessageFile) => {

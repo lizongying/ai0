@@ -13,7 +13,6 @@ import {Mentions, message, theme, type UploadProps} from 'ant-design-vue'
 
 import {v4 as uuidv4} from 'uuid';
 
-
 import {
   computed,
   type CSSProperties,
@@ -31,7 +30,7 @@ import {getImageUrl, getTimestamp, parseText} from './utils.ts'
 import {Lang, translations} from '../i18n'
 import {DatabaseManager} from './db.ts'
 
-import {ASSISTANTS, USER} from '../constants.ts'
+import {ASSISTANTS, GROUPS, USER} from '../constants.ts'
 
 const [messageApi, contextHolder] = message.useMessage()
 
@@ -158,6 +157,16 @@ Object.values(ASSISTANTS).filter(v => v.enable).forEach((assistant) => {
   }
 })
 
+user[GROUPS.ALL.id] = <User>{
+  id: GROUPS.ALL.id,
+  name: settings.groupName,
+  avatar: GROUPS.ALL.avatar,
+  link: '',
+  desc: GROUPS.ALL.desc,
+  online: true,
+  me: false,
+}
+
 user[USER] = <User>{
   id: USER,
   name: computed(() => settings.myName),
@@ -168,12 +177,14 @@ user[USER] = <User>{
   me: true,
 }
 
-const users: User[] = reactive(Object.values(ASSISTANTS).filter(v => v.enable).map(v => user[v.id]).concat([user.me]))
+const users: User[] = reactive(Object.values(ASSISTANTS).filter(v => v.enable)
+    .map(v => user[v.id])
+    .concat([user[GROUPS.ALL.id]])
+    .concat([user[USER]]))
 
 let dbManager: DatabaseManager | null = null
 
 const pageSize = 100
-let offset = 0
 
 let isComposing = false
 
@@ -206,34 +217,7 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   document.querySelector('textarea')?.addEventListener('keydown', handleKeydown)
 
-  let rs = await dbManager.findMessages(pageSize, offset)
-  if (rs) {
-    for (const i of rs.reverse()) {
-      const u = user[i.userId]
-      if (u) {
-        const currentMessage: Message = {
-          id: i.id,
-          user: u,
-          title: i.title,
-          content: i.content,
-          createTime: i.createTime,
-          finished: true,
-          render: 0,
-        }
-        messages.push(currentMessage)
-      }
-    }
-
-    if (messages && messages.length) {
-      oldestId = messages[0].id || Number.MAX_SAFE_INTEGER
-      latestId = messages[messages.length - 1].id || 0
-    }
-  }
-
-  setTimeout(async () => {
-    await scrollToBottom()
-  }, 1000)
-
+  await switchAssistant(currentAssistant.value.id)
 })
 
 onBeforeUnmount(() => {
@@ -260,7 +244,9 @@ const saveMessage = async (currentMessage: Message): Promise<number> => {
   if (settings.saveMessage) {
     try {
       messageId = await dbManager?.addMessage({
-        userId: currentMessage.user.id,
+        from: currentMessage.user.id,
+        to: currentMessage.to,
+        group: currentMessage.group,
         title: currentMessage.title,
         content: currentMessage.content,
         createTime: currentMessage.createTime,
@@ -274,9 +260,11 @@ const saveMessage = async (currentMessage: Message): Promise<number> => {
   return messageId
 }
 
-const newMessage = (user: User) => {
+const newMessage = (user: User, group: string, to = USER) => {
   const currentMessage: Message = {
     user: user,
+    to: to,
+    group: group,
     content: '',
     createTime: getTimestamp(),
     finished: false,
@@ -303,18 +291,12 @@ const finishedMessage = async (currentMessage: Message | undefined): Promise<voi
 
 const addMessage = async (content: string, user: User) => {
   if (user.id === USER) {
-    newMessage(user)
     const currentMessage = messagesMap.get(user.id)
     if (currentMessage) {
       currentMessage.content = content
       await finishedMessage(currentMessage)
     }
   } else if (user.id === ZHIDA.id) {
-    if (content === '[NEW]') {
-      newMessage(user)
-      return
-    }
-
     if (content === '[DONE]') {
       const currentMessage = messagesMap.get(user.id)
       await finishedMessage(currentMessage)
@@ -338,11 +320,6 @@ const addMessage = async (content: string, user: User) => {
       console.error(e)
     }
   } else if (user.id === SHUSHENG.id) {
-    if (content === '[NEW]') {
-      newMessage(user)
-      return
-    }
-
     if (content === '[DONE]') {
       const currentMessage = messagesMap.get(user.id)
       await finishedMessage(currentMessage)
@@ -373,11 +350,6 @@ const addMessage = async (content: string, user: User) => {
       console.error(e)
     }
   } else if (user.id === MITA.id) {
-    if (content === '[NEW]') {
-      newMessage(user)
-      return
-    }
-
     if (content === '[DONE]') {
       const currentMessage = messagesMap.get(user.id)
       await finishedMessage(currentMessage)
@@ -405,11 +377,6 @@ const addMessage = async (content: string, user: User) => {
       console.error(e)
     }
   } else if (user.id === QINGYAN.id) {
-    if (content === '[NEW]') {
-      newMessage(user)
-      return
-    }
-
     let t = content.trim().split('\n\n')
     try {
       for (const i of t) {
@@ -445,11 +412,6 @@ const addMessage = async (content: string, user: User) => {
       console.error(e)
     }
   } else if (user.id === ZHIPU.id) {
-    if (content === '[NEW]') {
-      newMessage(user)
-      return
-    }
-
     let t = content.trim().split('\n\n')
     try {
       for (const i of t) {
@@ -511,14 +473,14 @@ const addMessage = async (content: string, user: User) => {
         if (!i.trim()) {
           continue
         }
-        if (i === '[NEW]') {
-          newMessage(user)
-          continue
-        }
         if (!i.startsWith('data: ')) {
           continue
         }
-        const d = JSON.parse(i.slice(6))
+        const data = i.slice(6)
+        if (data === '[DONE]') {
+          continue
+        }
+        const d = JSON.parse(data)
         const currentMessage = messagesMap.get(user.id)
         if (d?.model_response?.type === 1 && currentMessage) {
           currentMessage.thinkingStatus = 1
@@ -565,10 +527,11 @@ const addMessage = async (content: string, user: User) => {
         if (!i.trim()) {
           continue
         }
-        const d = JSON.parse(i.slice(6))
-        if (d?.pkgId === 0) {
-          newMessage(user)
+        const data = i.slice(6)
+        if (data === '[DONE]') {
+          continue
         }
+        const d = JSON.parse(data)
         const currentMessage = messagesMap.get(user.id)
 
         if (d?.chat_prompt && currentMessage) {
@@ -637,9 +600,6 @@ const addMessage = async (content: string, user: User) => {
           continue
         }
         const d = JSON.parse(i.slice(6))
-        if (d?.event === 'resp') {
-          newMessage(user)
-        }
 
         if (d?.event === 'chat_prompt') {
           if (d?.text && currentMessage) {
@@ -675,7 +635,7 @@ const addMessage = async (content: string, user: User) => {
     }
   } else if (user.id === DOUBAO.id) {
     try {
-      for (const i of content.split('\n')) {
+      for (const i of content.split('\n\n')) {
         if (!i.trim()) {
           continue
         }
@@ -687,10 +647,13 @@ const addMessage = async (content: string, user: User) => {
         if (!i.startsWith('data: ')) {
           continue
         }
-        const d = JSON.parse(i.slice(6))
-        if (d?.event_id === '0') {
-          newMessage(user)
-        }
+        const data = i.slice(6)
+        console.info('data', data)
+        // if (data === '[DONE]') {
+        //   continue
+        // }
+        const d = JSON.parse(data)
+
         if (d?.event_type === 2001) {
           const event_data = JSON.parse(d?.event_data)
           const text = JSON.parse(event_data?.message?.content)
@@ -733,7 +696,6 @@ const addMessage = async (content: string, user: User) => {
     for (const r of rs) {
       const currentMessage = messagesMap.get(user.id)
       if (r.event === 'ready') {
-        newMessage(user)
       } else if (r.event === 'update_session') {
         if (r.data && 'updated_at' in r.data && r.data.updated_at) {
           if (currentMessage) {
@@ -802,11 +764,8 @@ const options = computed(() =>
     users.filter(i => i !== user.me).map(d => {
       return {
         value: d.id,
-        label: d.name,
+        label: d.id === GROUPS.ALL.id ? t.value.allMembers : d.name,
       }
-    }).concat({
-      value: 'all',
-      label: t.value.allMembers,
     })
 )
 
@@ -821,15 +780,17 @@ const content = ref('')
 const scrollContainer = ref<any>(null)
 const scrollContent = ref<HTMLDivElement | null>(null)
 
-const loadMoreData = async (): Promise<number> => {
-  let rs = await dbManager?.findNextMessages(pageSize / 2, latestId)
+const loadMoreData = async (userId: string): Promise<number> => {
+  let rs = await dbManager?.findMessages(pageSize / 2, latestId, 'next', userId)
   if (rs && rs.length) {
     for (const i of rs) {
-      const u = user[i.userId]
+      const u = user[i.from]
       if (u) {
         const currentMessage: Message = {
           id: i.id,
           user: u,
+          to: i.to,
+          group: i.group,
           title: i.title,
           content: i.content,
           createTime: i.createTime,
@@ -853,15 +814,17 @@ const loadMoreData = async (): Promise<number> => {
   return rs?.length || 0
 }
 
-const loadEarlierData = async (): Promise<number> => {
-  let rs = await dbManager?.findPrevMessages(pageSize / 2, oldestId)
+const loadEarlierData = async (userId: string): Promise<number> => {
+  let rs = await dbManager?.findMessages(pageSize / 2, oldestId, 'prev', userId)
   if (rs && rs.length) {
     for (const i of rs) {
-      const u = user[i.userId]
+      const u = user[i.from]
       if (u) {
         const currentMessage: Message = {
           id: i.id,
           user: u,
+          to: i.to,
+          group: i.group,
           title: i.title,
           content: i.content,
           createTime: i.createTime,
@@ -905,21 +868,27 @@ const handleScroll = async () => {
   if (debounceTimer) clearTimeout(debounceTimer)
 
   debounceTimer = setTimeout(async () => {
+    let userId = currentAssistant.value?.id || ''
     if (scrollDirection === 'down' && isNearBottom) {
-      await loadMoreData()
+      await loadMoreData(userId)
     } else if (scrollDirection === 'up' && scrollTop <= SCROLL_THRESHOLD) {
-      await loadEarlierData()
+      await loadEarlierData(userId)
     }
   }, SCROLL_DEBOUNCE_MS)
 }
 
-let mentions: any = []
+let mentions: MentionsEntity[] = []
 
 const sendMessage = async () => {
   const text = content.value.trim()
   if (!text) {
     return
   }
+
+  const assistant = currentAssistant.value.id
+
+  newMessage(user.me, assistant, assistant)
+  await addMessage(text, user.me)
 
   mentions = []
   if (window.electronAPI) {
@@ -929,36 +898,63 @@ const sendMessage = async () => {
     const uuid = uuidv4()
 
     mentions = [...new Set(getMentions(text))]
-    if (mentions.map((i: any) => i.value).includes('all')) {
-      users.filter(i => i !== user.me && i.online).forEach((i: any) => {
-        if (file) {
-          const arr = i.accept.split(',')
-          if (!arr.some((element: string) => file.name.includes(element))) {
-            message.warning(`${i.id} support: ${i.accept}`)
-          } else {
-            window.electronAPI.sendMessage('file', <MessageFile>{
-              from: USER,
-              to: i.id,
-              fileName: file.name,
-              fileType: file.type,
-              fileData: file.data,
-              id: uuid
-            })
-          }
-        }
 
-        window.electronAPI.sendMessage('chat', <MessageChat>{from: USER, to: i.id, data: text, id: uuid})
-      })
+    if (assistant === GROUPS.ALL.id) {
+      if (!mentions.length || mentions.map((i: MentionsEntity) => i.value).includes(GROUPS.ALL.id)) {
+        users.filter(i => i !== user.me && i !== user[GROUPS.ALL.id] && i.online).forEach((to: User) => {
+          if (file) {
+            const arr = to.accept.split(',')
+            if (!arr.some((element: string) => file.name.includes(element))) {
+              message.warning(`${to.id} support: ${to.accept}`)
+            } else {
+              window.electronAPI.sendMessage('file', <MessageFile>{
+                from: assistant,
+                to: to.id,
+                fileName: file.name,
+                fileType: file.type,
+                fileData: file.data,
+                id: uuid
+              })
+            }
+          }
+          window.electronAPI.sendMessage('chat', <MessageChat>{from: assistant, to: to.id, data: text, id: uuid})
+          newMessage(to, GROUPS.ALL.id, USER)
+        })
+      } else {
+        mentions.forEach((i: MentionsEntity) => {
+          const to = user[i.value]
+          if (to) {
+            if (file) {
+              const arr = to.accept.split(',')
+              if (!arr.some(element => file.name.includes(element))) {
+                message.warning(`${to.id} support: ${to.accept}`)
+              } else {
+                window.electronAPI.sendMessage('file', <MessageFile>{
+                  from: USER,
+                  to: to.id,
+                  fileName: file.name,
+                  fileType: file.type,
+                  fileData: file.data,
+                  id: uuid
+                })
+              }
+            }
+            window.electronAPI.sendMessage('chat', <MessageChat>{from: USER, to: to.id, data: text, id: uuid})
+            newMessage(to, GROUPS.ALL.id, USER)
+          }
+        })
+      }
     } else {
-      mentions.forEach((i: any) => {
+      const to = user[assistant]
+      if (to) {
         if (file) {
-          const arr = user[i.value].accept.split(',')
+          const arr = to.accept.split(',')
           if (!arr.some(element => file.name.includes(element))) {
-            message.warning(`${i.value} support: ${user[i.value].accept}`)
+            message.warning(`${to.id} support: ${to.accept}`)
           } else {
             window.electronAPI.sendMessage('file', <MessageFile>{
               from: USER,
-              to: i.value,
+              to: to.id,
               fileName: file.name,
               fileType: file.type,
               fileData: file.data,
@@ -966,13 +962,13 @@ const sendMessage = async () => {
             })
           }
         }
-        window.electronAPI.sendMessage('chat', <MessageChat>{from: USER, to: i.value, data: text, id: uuid})
-      })
+        window.electronAPI.sendMessage('chat', <MessageChat>{from: USER, to: to.id, data: text, id: uuid})
+        newMessage(to, to.id, USER)
+      }
     }
   }
 
-  await addMessage(text, user.me)
-  content.value = mentions.length > 0 ? mentions.map((i: any) => `@${i.value}`).join(' ') + ' ' : ''
+  content.value = mentions.length > 0 ? mentions.map((i: MentionsEntity) => `@${i.value}`).join(' ') + ' ' : ''
 
   fileList.value = []
   fileData.value = null
@@ -1063,7 +1059,7 @@ const handleCompositionEnd = () => {
 }
 
 const handleSuggest = async (msg: string) => {
-  const m = mentions.length > 0 ? mentions.map((i: any) => `@${i.value}`).join(' ') + ' ' : ''
+  const m = mentions.length > 0 ? mentions.map((i: MentionsEntity) => `@${i.value}`).join(' ') + ' ' : ''
   content.value = `${m} ${msg}`
   await sendMessage()
 }
@@ -1112,6 +1108,19 @@ const translate = ref(false)
 const changeTranslate = () => {
   translate.value = !translate.value
 }
+
+const currentAssistant = ref<User>(user[GROUPS.ALL.id])
+const switchAssistant = async (userId: string) => {
+  currentAssistant.value = user[userId]
+  oldestId = Number.MAX_SAFE_INTEGER
+  messages.splice(0)
+  await loadEarlierData(userId)
+
+  setTimeout(async () => {
+    await scrollToBottom()
+  }, 1000)
+}
+
 </script>
 
 <template>
@@ -1168,7 +1177,7 @@ const changeTranslate = () => {
                       <a-tooltip>
                         <template #title>{{ item.name }}</template>
                         <a-avatar :src="getImageUrl(item.avatar)" shape="square" :size="64"
-                                  @click="openWindow(item.id)">
+                                  @click="switchAssistant(item.id)">
                           <template #icon>
                             <UserOutlined/>
                           </template>
@@ -1188,7 +1197,7 @@ const changeTranslate = () => {
           <a-flex gap="middle" justify="space-between" align="center">
             <a-flex justify="center" align="flex-end">
               <a-typography>
-                <a-typography-title :level="4">{{ settings.groupName }}</a-typography-title>
+                <a-typography-title :level="4">{{ currentAssistant?.name }}</a-typography-title>
               </a-typography>
             </a-flex>
             <a-flex justify="flex-end" align="center">
@@ -1199,7 +1208,8 @@ const changeTranslate = () => {
         </a-layout-header>
         <a-layout-content :style="contentStyle" ref="scrollContainer" @scroll="handleScroll">
           <div ref="scrollContent">
-            <Chat :messages="messages" :settings="settings" @suggest="handleSuggest" @delMessage="delMessage"></Chat>
+            <Chat :messages="messages" :settings="settings" @suggest="handleSuggest" @delMessage="delMessage"
+                  @openWindow="openWindow"></Chat>
           </div>
         </a-layout-content>
         <a-layout-footer :style="footerStyle">

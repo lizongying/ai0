@@ -22,6 +22,8 @@ declare global {
     interface Message {
         id?: number
         user: User
+        to: string
+        group: string
         title?: string
         content: string
         createTime: number
@@ -36,7 +38,10 @@ declare global {
 
     interface MessageStore {
         id?: number
-        userId: string
+        userId?: string
+        from: string
+        to: string
+        group: string
         title?: string
         content: string
         createTime: number
@@ -46,10 +51,12 @@ declare global {
         electronAPI: {
             sendMessage: (channel: string, data: any) => void
             onMessage: (channel: string, callback: (...args: any[]) => void) => void
+            from: () => string
         }
         API: {
             sendMessage: (channel: string, data: any) => void
             onMessage: (channel: string, callback: (...args: any[]) => void) => void
+            from: () => string
         }
     }
 
@@ -94,6 +101,13 @@ declare global {
     interface Result {
         event?: string
         data?: Data
+    }
+
+
+    // ant-design-vue
+    interface MentionsEntity {
+        prefix: string;
+        value: string;
     }
 }
 

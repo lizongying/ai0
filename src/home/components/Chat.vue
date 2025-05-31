@@ -16,6 +16,7 @@ import {utils, writeFile} from 'xlsx'
 import {message} from 'ant-design-vue'
 import HtmlToDocx from 'web-docx'
 import {minify} from 'html-minifier-terser'
+import TimeUtils from '../../utils/time_utils'
 
 const [messageApi, contextHolder] = message.useMessage()
 
@@ -212,7 +213,7 @@ const copyAsMd = async (md: string) => {
   messageApi.info(t.value.copied)
 }
 
-const emit = defineEmits(['suggest', 'delMessage'])
+const emit = defineEmits(['suggest', 'delMessage', 'openWindow'])
 
 const suggest = (content: string) => {
   emit('suggest', content)
@@ -226,6 +227,10 @@ const delMessage = (id: number) => {
     }
     emit('delMessage', id)
   }
+}
+
+const openWindow = (id: string) => {
+  emit('openWindow', id)
 }
 
 const activeKey = ref(['1'])
@@ -243,7 +248,8 @@ const handleMouseOver = (index: number) => {
     <div :class="messageContainerClass(message.user.me)" v-for="(message, index) in messages" :key="index">
       <a-tooltip v-if="!message.user.me">
         <template #title>{{ message.user.name }}</template>
-        <a-avatar :src="getImageUrl(message.user.avatar)" shape="square" :size="64">
+        <a-avatar :src="getImageUrl(message.user.avatar)" shape="square" :size="64"
+                  @click="openWindow(message.user.id)">
           <template #icon>
             <UserOutlined/>
           </template>
@@ -251,7 +257,7 @@ const handleMouseOver = (index: number) => {
       </a-tooltip>
       <div class="message-content">
         <div class="username">{{ props.settings.showNickname ? message.user.name : '' }} {{
-            new Date().toLocaleString()
+            TimeUtils.timestampToTime(message.createTime, 'yyyy-MM-dd HH:mm:ss')
           }}
         </div>
         <div

@@ -19,17 +19,12 @@ const hookRequest = () => {
                         const currentUrl = new URL(clonedResponse.url)
                         const newMessageId = currentUrl.searchParams.get('message_id') || ''
                         if (newMessageId != messageId) {
-                            window.electronAPI.sendMessage('chat', <MessageChat>{
-                                from: assistant.id,
-                                to: USER,
-                                data: '[NEW]',
-                            })
                             messageId = newMessageId
                         }
 
                         window.electronAPI.sendMessage('chat', <MessageChat>{
                             from: assistant.id,
-                            to: USER,
+                            to: window.electronAPI.from() || USER,
                             data: await clonedResponse.text(),
                         })
                     }
@@ -63,20 +58,9 @@ const hookRequest = () => {
                     }
                     if (thisArg.readyState === 3 || thisArg.readyState === 4) {
                         try {
-                            const currentUrl = new URL(thisArg._requestUrl)
-                            const newMessageId = currentUrl.searchParams.get('message_id') || ''
-                            if (newMessageId != messageId) {
-                                window.electronAPI.sendMessage('chat', <MessageChat>{
-                                    from: assistant.id,
-                                    to: USER,
-                                    data: '[NEW]',
-                                })
-                                messageId = newMessageId
-                            }
-
                             window.electronAPI.sendMessage('chat', <MessageChat>{
                                 from: assistant.id,
-                                to: USER,
+                                to: window.electronAPI.from() || USER,
                                 data: thisArg.responseText,
                             })
                         } catch (error) {

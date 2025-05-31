@@ -18,11 +18,6 @@ const hookRequest = () => {
                         const decoder = new TextDecoder()
 
                         if (reader) {
-                            window.API.sendMessage('chat', <MessageChat>{
-                                from: assistant.id,
-                                to: USER,
-                                data: '[NEW]',
-                            })
                             while (true) {
                                 const {done, value} = await reader.read()
                                 if (done) break
@@ -32,7 +27,7 @@ const hookRequest = () => {
 
                                 window.electronAPI.sendMessage('chat', <MessageChat>{
                                     from: assistant.id,
-                                    to: USER,
+                                    to: window.electronAPI.from() || USER,
                                     data: chunk,
                                 });
                             }

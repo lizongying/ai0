@@ -28,7 +28,7 @@ const hookRequest = () => {
 
                                 window.electronAPI.sendMessage('chat', <MessageChat>{
                                     from: assistant.id,
-                                    to: USER,
+                                    to: window.electronAPI.from() || USER,
                                     data: chunk,
                                 })
                             }
@@ -45,7 +45,7 @@ const hookRequest = () => {
                                 for (const recommend of recommendedQuestions) {
                                     window.electronAPI.sendMessage('chat', <MessageChat>{
                                         from: assistant.id,
-                                        to: USER,
+                                        to: window.electronAPI.from() || USER,
                                         data: `data: {"chat_prompt": "${recommend}"}`,
                                     })
                                 }
@@ -92,7 +92,7 @@ const hookRequest = () => {
                                 for (const recommend of recommendedQuestions) {
                                     window.electronAPI.sendMessage('chat', <MessageChat>{
                                         from: assistant.id,
-                                        to: USER,
+                                        to: window.electronAPI.from() || USER,
                                         data: `data: {"chat_prompt": "${recommend}"}`,
                                     })
                                 }
